@@ -1,0 +1,64 @@
+# ── 构建产物 ──────────────────────────────────────────
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+publish/
+*.exe
+*.dll
+*.msi
+*.zip
+*.pdb
+
+# ── IDE / 工具 ───────────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.csproj.user
+
+# ── 测试与本地数据 ────────────────────────────────────
+TestResults/
+*.trx
+*.coverage
+coverage*.xml
+[Bb]uild[Ll]og*.txt
+
+# ── 运行时本地数据（绝不该进仓库）─────────────────────
+# 会话 Cookie 的 DPAPI 密文、日志、码表下载缓存
+session.protected
+*.protected
+logs/
+*.log
+
+# ── 操作系统 ─────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ── 环境与凭据 ───────────────────────────────────────
+.env
+.env.*
+*.pem
+*.key
+secrets.json
+appsettings.*.local.json
+
+# ── NuGet ────────────────────────────────────────────
+*.nupkg
+*.snupkg
+packages/
+!packages/build/
+
+# ── 一次性草稿（规范禁止入库，见 SPEC-001 第五节）──────
+tmp/
+temp/
+scratch/
+*.bak
+*~
