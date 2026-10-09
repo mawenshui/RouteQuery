@@ -1,0 +1,86 @@
+{
+  "_元信息": {
+    "采集日期": "2026-10-09",
+    "接口": "API-04 车次经停站",
+    "端点": "/otn/czxx/queryByTrainNo",
+    "方法": "GET",
+    "参数": [
+      "train_no",
+      "from_station_telecode",
+      "to_station_telecode",
+      "depart_date(yyyy-MM-dd)"
+    ],
+    "登录态要求": "无（游客态实测可用）",
+    "说明": "响应为具名字段数组，非位置列，无需列布局表。已确认不含 Cookie/账号信息。"
+  },
+  "status": true,
+  "httpstatus": 200,
+  "站数": 32,
+  "字段名": [
+    "station_name",
+    "isChina",
+    "start_station_name",
+    "station_train_code",
+    "station_no",
+    "arrive_time",
+    "start_time",
+    "train_class_name",
+    "country_code",
+    "service_type",
+    "end_station_name",
+    "isEnabled",
+    "country_name",
+    "stopover_time"
+  ],
+  "样本站点": [
+    {
+      "station_name": "包头",
+      "isChina": "1",
+      "start_station_name": "包头",
+      "station_train_code": "K598",
+      "station_no": "01",
+      "arrive_time": "----",
+      "start_time": "17:06",
+      "train_class_name": "快速",
+      "country_code": "",
+      "service_type": "1",
+      "end_station_name": "广州白云",
+      "isEnabled": false,
+      "country_name": "",
+      "stopover_time": "----"
+    },
+    {
+      "station_name": "萨拉齐",
+      "start_time": "17:52",
+      "country_code": "",
+      "isChina": "1",
+      "isEnabled": false,
+      "country_name": "",
+      "station_no": "02",
+      "stopover_time": "4分钟",
+      "arrive_time": "17:48"
+    },
+    {
+      "station_name": "呼和浩特东",
+      "start_time": "19:52",
+      "country_code": "",
+      "isChina": "1",
+      "isEnabled": false,
+      "country_name": "",
+      "station_no": "03",
+      "stopover_time": "13分钟",
+      "arrive_time": "19:39"
+    },
+    {
+      "station_name": "广州白云",
+      "start_time": "10:30",
+      "country_code": "",
+      "isChina": "1",
+      "isEnabled": false,
+      "country_name": "",
+      "station_no": "32",
+      "stopover_time": "----",
+      "arrive_time": "10:30"
+    }
+  ]
+}
