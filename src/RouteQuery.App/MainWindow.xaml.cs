@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     /// 用户可能在里面登录了、也可能什么都没做，两种情况界面都要如实反映。</summary>
     private void Login_Click(object sender, RoutedEventArgs e)
     {
-        var page = new Web.OfficialLoginPage(Vm.LoginPageUrl, Vm.Session, Vm.CookieScopeUrl) { Owner = this };
+        var page = new Web.OfficialLoginPage(Vm.LoginPageUrl, Vm.Session, Vm.CookieScopeUrls) { Owner = this };
         page.ShowDialog();
         Vm.NotifySessionChanged();
     }

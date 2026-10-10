@@ -218,8 +218,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     /// <summary>登录页地址。字符串由数据层给出，界面只负责交给 WebView2（AGENTS 第六节）。</summary>
     public string LoginPageUrl => _links.LoginPageUrl;
 
-    /// <summary>可读取 Cookie 的范围地址。同样由数据层给出（AGENTS 第六节）。</summary>
-    public string CookieScopeUrl => _links.CookieScopeUrl;
+    /// <summary>可读取 Cookie 的站点范围。同样由数据层给出（AGENTS 第六节）。</summary>
+    public IReadOnlyList<string> CookieScopeUrls => _links.CookieScopeUrls;
 
     /// <summary>会话端口本身。登录窗口需要写它，退出按钮需要清它——都是 Core 接口，
     /// 界面拿到的是一个只有"写与清"的对象，拿不到 Cookie。</summary>

@@ -17,6 +17,10 @@ public sealed class OfficialLinkProvider : IOfficialLinkProvider
     /// 那里正是用户自己输账号密码的那一屏。刻意不另拼一个登录 URL（Q-07 同口径：不猜地址）。</summary>
     public string LoginPageUrl => OfficialClient.InitUrl;
 
-    /// <summary>只读官方站自己的 Cookie 范围，别的站点一概不读。</summary>
-    public string CookieScopeUrl => OfficialClient.Origin;
+    /// <summary>只读官方自己的两个主机，别的站点一概不读。</summary>
+    public IReadOnlyList<string> CookieScopeUrls { get; } =
+    [
+        OfficialClient.Origin,                                  // kyfw.12306.cn：查询与业务接口
+        "https://www.12306.cn",                                 // 登录身份相关 Cookie 可能落在这里
+    ];
 }

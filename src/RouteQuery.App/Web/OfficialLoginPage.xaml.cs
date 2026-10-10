@@ -17,15 +17,15 @@ public partial class OfficialLoginPage : Window
 {
     private readonly IOfficialSession _session;
     private readonly ITextProvider _text;
-    private readonly string _cookieScope;
+    private readonly IReadOnlyList<string> _cookieScopes;
 
     /// <param name="startUrl">登录页地址。由数据层给出，App 不拼 URL（AGENTS 第六节）。</param>
-    public OfficialLoginPage(string startUrl, IOfficialSession session, string cookieScope)
+    public OfficialLoginPage(string startUrl, IOfficialSession session, IReadOnlyList<string> cookieScopes)
     {
         InitializeComponent();
         _session = session;
         _text = Composition.Text;
-        _cookieScope = cookieScope;
+        _cookieScopes = cookieScopes;
 
         Loaded += async (_, _) => await StartAsync(startUrl);
     }
@@ -91,17 +91,22 @@ public partial class OfficialLoginPage : Window
     {
         if (Web.CoreWebView2 is not { } core) return;
 
-        var cookies = await core.CookieManager.GetCookiesAsync(_cookieScope);
-        if (cookies.Count == 0)
+        // 逐站取再按名字合并：漏掉任何一个官方主机，都可能把登录身份那一条留在原地。
+        var picked = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var scope in _cookieScopes)
+            foreach (var c in await core.CookieManager.GetCookiesAsync(scope))
+                picked[c.Name] = c.Value;
+
+        if (picked.Count == 0)
         {
             StatusLine.Text = _text.Get("登录_未取到Cookie");
             return;
         }
 
-        _session.AdoptFromLoginPage(string.Join("; ", cookies.Select(c => $"{c.Name}={c.Value}")));
+        _session.AdoptFromLoginPage(string.Join("; ", picked.Select(kv => $"{kv.Key}={kv.Value}")));
 
         // 只报"拿到几条"，不报内容。够用户核对了，内容一个字都不该出现在界面上。
-        StatusLine.Text = string.Format(_text.Get("登录_已保存"), cookies.Count);
+        StatusLine.Text = string.Format(_text.Get("登录_已保存"), picked.Count);
     }
 
     /// <summary>被白名单拦下时，允许用户改用系统浏览器——那里有真正的地址栏可以核对域名。</summary>

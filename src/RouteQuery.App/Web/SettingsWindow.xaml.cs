@@ -21,7 +21,7 @@ public partial class SettingsWindow : Window
 
     private void Login_Click(object sender, RoutedEventArgs e)
     {
-        new OfficialLoginPage(Vm.LoginPageUrl, Vm.Session, Vm.CookieScopeUrl) { Owner = this }.ShowDialog();
+        new OfficialLoginPage(Vm.LoginPageUrl, Vm.Session, Vm.CookieScopeUrls) { Owner = this }.ShowDialog();
         Vm.NotifySessionChanged();
     }
 
