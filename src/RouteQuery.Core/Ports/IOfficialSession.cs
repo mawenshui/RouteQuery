@@ -14,6 +14,9 @@ public interface IOfficialSession
     /// <summary>本机是否持有一份登录态。只回答有/无，不返回内容。</summary>
     bool HasValidSession { get; }
 
+    /// <summary>这份登录态是什么时候取到的；没有则为 null。时间戳不是凭据，界面可以显示它。</summary>
+    DateTimeOffset? SavedAt { get; }
+
     /// <summary>
     /// 收下用户在 WebView2 官方页面登录成功后由容器给出的 Cookie 头，加密存本机。
     /// <para>调用方必须是"用户刚刚在官方页面完成登录"这一事件，而不是任何自动时机。</para>

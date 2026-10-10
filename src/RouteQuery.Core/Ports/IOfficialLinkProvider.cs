@@ -10,4 +10,8 @@ public interface IOfficialLinkProvider
 {
     /// <summary>余票查询页地址。应用只做"在系统默认浏览器里打开"，不代发任何请求。</summary>
     string LeftTicketPageUrl { get; }
+
+    /// <summary>官方登录页地址，供 WebView2 宿主作为起始页（FR-24）。
+    /// 与上一个成员同样：地址常量属于数据层，App 只拿到字符串。</summary>
+    string LoginPageUrl { get; }
 }

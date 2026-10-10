@@ -12,4 +12,8 @@ namespace RouteQuery.Data.Services;
 public sealed class OfficialLinkProvider : IOfficialLinkProvider
 {
     public string LeftTicketPageUrl => OfficialClient.InitUrl;
+
+    /// <summary>登录页就是余票查询页：官方在未登录时会把它引导到 <c>/otn/passport</c>，
+    /// 那里正是用户自己输账号密码的那一屏。刻意不另拼一个登录 URL（Q-07 同口径：不猜地址）。</summary>
+    public string LoginPageUrl => OfficialClient.InitUrl;
 }

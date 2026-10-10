@@ -1,0 +1,47 @@
+<Window x:Class="RouteQuery.App.Web.OfficialLoginPage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="{DynamicResource 登录_标题}"
+        Width="920" Height="740" MinWidth="560" MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13">
+
+    <DockPanel>
+        <!-- 顶部常驻说明：这一屏的唯一用途是让用户本人在官方页面里登录。
+             这句话必须一直在，而不是只在第一次弹出来——用户中途切回来时会忘了自己在哪。 -->
+        <Border DockPanel.Dock="Top" Background="#FFF4E5" Padding="12,10">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource 登录_提示}" TextWrapping="Wrap" />
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap">
+                        <Run Text="{DynamicResource 登录_当前地址}"/><Run Text=" "/>
+                        <Run x:Name="HostLabel" Text="—" FontWeight="SemiBold"/>
+                    </TextBlock>
+                    <Button Grid.Column="1" Content="{DynamicResource 登录_我好了}" Padding="12,4" Margin="8,0,0,0"
+                            Click="Done_Click"/>
+                    <Button Grid.Column="2" Content="{DynamicResource 登录_浏览器打开}" Padding="12,4" Margin="6,0,0,0"
+                            Click="OpenInBrowser_Click"/>
+                </Grid>
+                <!-- 采集结果只说条数，不说内容 -->
+                <TextBlock x:Name="StatusLine" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#1B6B3A"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 非官方域名被拦下时的红条。刻意不"悄悄回到上一页"：用户必须知道自己刚才那次跳转没走成。 -->
+        <Border x:Name="BlockedBar" DockPanel.Dock="Top" Background="#B3261E" Padding="12,8" Visibility="Collapsed">
+            <TextBlock x:Name="BlockedText" Foreground="White" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- 运行时缺失时替换 WebView2 的说明区 -->
+        <TextBlock x:Name="MissingRuntime" DockPanel.Dock="Top" Text="{DynamicResource 登录_缺运行时}"
+                   TextWrapping="Wrap" Margin="24" Visibility="Collapsed"/>
+
+        <wv2:WebView2 x:Name="Web"/>
+    </DockPanel>
+</Window>

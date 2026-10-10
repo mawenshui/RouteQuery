@@ -24,6 +24,17 @@ public partial class MainWindow : Window
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => Vm.CancelQuery();
 
+    /// <summary>打开内嵌官方登录页。窗口关掉后一律刷新一次状态——
+    /// 用户可能在里面登录了、也可能什么都没做，两种情况界面都要如实反映。</summary>
+    private void Login_Click(object sender, RoutedEventArgs e)
+    {
+        var page = new Web.OfficialLoginPage(Vm.LoginPageUrl, Vm.Session) { Owner = this };
+        page.ShowDialog();
+        Vm.NotifySessionChanged();
+    }
+
+    private void Logout_Click(object sender, RoutedEventArgs e) => Vm.ClearSession();
+
     private void QuickDate_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: string tag } && int.TryParse(tag, out var offset)) Vm.QuickDate(offset);

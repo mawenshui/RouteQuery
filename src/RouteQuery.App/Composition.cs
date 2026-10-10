@@ -23,6 +23,12 @@ public static class Composition
     /// 但 App 不得看见 Data 的具体类型，所以由组合根把接口递出去。</summary>
     public static ISettingsStore BuildSettings() => new SettingsStore();
 
+    /// <summary>WebView2 的私有配置目录。路径属于数据层，App 侧不出现路径常量。</summary>
+    public static string LoginPageProfileDirectory => Data.Store.AppPaths.WebViewProfile;
+
+    /// <summary>文案取用。登录窗口自己也要取文案，但它不该被要求从外部接一个参数进来。</summary>
+    public static ITextProvider Text { get; } = new ResourceTextProvider();
+
     /// <summary>未处理异常落盘。日志路径属于数据层，App 侧不允许出现路径常量（SPEC-003 目录规则）。
     /// 写失败一律吞掉——崩溃提示本身比日志重要。</summary>
     public static void LogCrash(Exception ex)
@@ -41,7 +47,7 @@ public static class Composition
 
     public static MainViewModel Build()
     {
-        var text = new ResourceTextProvider();
+        var text = Text;
 
         var stations = BuildStations(text);
         var endpoints = new EndpointResolver();
@@ -69,7 +75,7 @@ public static class Composition
         // 会话对象目前只进请求路径；"登录状态可见 + 一键清除"随设置页一起做（TASK-33），
         // 现在传给 ViewModel 只会多一个没人用的字段。
         return new MainViewModel(stations, query, stops, extension, settings, new QueryBudgetAdapter(gate), text,
-            new OfficialLinkProvider());
+            new OfficialLinkProvider(), session);
     }
 
     /// <summary>版本号的唯一来源是 csproj 的 <c>&lt;Version&gt;</c>（SPEC-006 一）。

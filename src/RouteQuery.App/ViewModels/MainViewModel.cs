@@ -20,6 +20,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private readonly IQueryBudget _budget;
     private readonly ITextProvider _text;
     private readonly IOfficialLinkProvider _links;
+    private readonly IOfficialSession _session;
 
     private Station? _from;
     private Station? _to;
@@ -47,7 +48,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         ISettingsStore settings,
         IQueryBudget budget,
         ITextProvider text,
-        IOfficialLinkProvider links)
+        IOfficialLinkProvider links,
+        IOfficialSession session)
     {
         _stations = stations;
         _query = query;
@@ -57,6 +59,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         _budget = budget;
         _text = text;
         _links = links;
+        _session = session;
         _statusText = text.Get("状态_空");
         _dailyRemaining = _budget.DailyRemaining;
 
@@ -101,6 +104,36 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         }
 
         return Task.CompletedTask;
+    }
+
+    // ── 登录态（FR-24 / FR-25）──────────────────────────────
+    /// <summary>是否已持有官方登录态。界面用它决定中转页签显示引导还是显示"已登录 + 退出"。</summary>
+    public bool HasLoginSession => _session.HasValidSession;
+
+    /// <summary>登录状态那句话。未登录时<b>必须</b>同时说清"不登录能做什么"，
+    /// 否则亲友会以为整个工具用不了（DEC-08：引导态不是错误态）。</summary>
+    public string SessionSummary => HasLoginSession
+        ? string.Format(_text.Get("登录_状态已登录"),
+            _session.SavedAt?.ToString("M月d日 HH:mm") ?? _text.Get("提示_官方未给出"))
+        : _text.Get("登录_状态未登录");
+
+    /// <summary>登录页地址。字符串由数据层给出，界面只负责交给 WebView2（AGENTS 第六节）。</summary>
+    public string LoginPageUrl => _links.LoginPageUrl;
+
+    /// <summary>会话端口本身。登录窗口需要写它，退出按钮需要清它——都是 Core 接口，
+    /// 界面拿到的是一个只有"写与清"的对象，拿不到 Cookie。</summary>
+    public IOfficialSession Session => _session;
+
+    /// <summary>登录窗口关掉之后由界面调用，让状态行重新取值。</summary>
+    public void NotifySessionChanged() => Raise(nameof(HasLoginSession), nameof(SessionSummary));
+
+    /// <summary>退出并清除：应用侧副本 + WebView 容器两处都要清（SPEC-007 三.4）。</summary>
+    public void ClearSession()
+    {
+        _session.Clear();
+        Web.WebProfileCleaner.Clear();
+        NotifySessionChanged();
+        ExtensionStatus = _text.Get("登录_已清除");
     }
 
     /// <summary>跳转后需要用户自己填的条件——原样复述一遍，省得他记两遍站名（FR-19 的"带不上参数"补偿）。</summary>

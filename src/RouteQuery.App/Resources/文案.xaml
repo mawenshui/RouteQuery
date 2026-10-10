@@ -117,6 +117,21 @@
     <sys:String x:Key="跳转_失败">没能叫出你的默认浏览器。请自己打开 12306 网站查询。</sys:String>
 
     <sys:String x:Key="中转_未登录">查看官方换乘方案需要先登录 12306 账号；本工具不会保存你的密码，登录在官方页面里完成。</sys:String>
-    <sys:String x:Key="中转_本版未做">内嵌登录（WebView2）在下一个版本提供。本版可正常使用直达查询与"多买几站"。</sys:String>
+    <sys:String x:Key="登录_标题">在 12306 官方页面登录</sys:String>
+    <sys:String x:Key="登录_提示">你正在 12306 官方页面里登录。账号、密码和验证码都由你本人在这一个页面里输入，本工具不接收、也不保存它们——它只在你点下面"我登录好了"之后，取一次官方容器给出的登录状态。</sys:String>
+    <sys:String x:Key="登录_当前地址">当前地址</sys:String>
+    <sys:String x:Key="登录_我好了">我登录好了</sys:String>
+    <sys:String x:Key="登录_浏览器打开">改用系统浏览器</sys:String>
+    <sys:String x:Key="登录_被阻断">已阻止跳转到非官方站点：{0}。本工具只允许停留在 12306 官方域名内。</sys:String>
+    <sys:String x:Key="登录_已保存">已取到 {0} 条登录状态，可以关窗回主界面了。</sys:String>
+    <sys:String x:Key="登录_未取到Cookie">这个页面里还没有可取的登录状态。请先在上面的页面完成登录，再点"我登录好了"。</sys:String>
+    <sys:String x:Key="登录_已交浏览器">已交给系统浏览器。在那里登录完再回来点"我登录好了"是无效的——只能取本窗口里的状态。</sys:String>
+    <sys:String x:Key="登录_缺运行时">这台机器上没有 WebView2 运行时，无法内嵌官方登录页。Windows 10 较旧的版本可能缺少它，装上 "Microsoft Edge WebView2 Runtime" 后重开本工具即可。直达查询与"多买几站"不受影响。</sys:String>
+    <sys:String x:Key="登录_按钮">登录 12306</sys:String>
+    <sys:String x:Key="登录_状态未登录">未登录。不登录也能查直达、看经停、算"多买几站"；只有官方换乘方案需要登录。</sys:String>
+    <sys:String x:Key="登录_状态已登录">已取到登录状态（{0}，尚未向官方验证）。它只存在你本机的加密文件里；真正用它取换乘方案时若官方不认，会自动清掉并提示重新登录。</sys:String>
+    <sys:String x:Key="登录_退出">退出并清除登录状态</sys:String>
+    <sys:String x:Key="登录_已清除">登录状态已清除。</sys:String>
+    <sys:String x:Key="中转_本版未做">官方换乘方案的取数与解析还没完成：登录已经可用，但官方在登录态下返回的换乘数据结构尚未实测过一次。没有实测样本就写解析等于猜数据，所以这一格现在说明原因而不是给结果。</sys:String>
 
 </ResourceDictionary>

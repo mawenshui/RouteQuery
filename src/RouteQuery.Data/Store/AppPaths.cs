@@ -16,6 +16,10 @@ public static class AppPaths
     public static string Endpoints => Ensure(Path.Combine(Root, "endpoints.json"));
     public static string Session => Ensure(Path.Combine(Root, "session.protected"));
     public static string DailyCount => Ensure(Path.Combine(Root, "daily.json"));
+
+    /// <summary>WebView2 的私有配置目录。只放官方登录页产生的缓存与 Cookie，
+    /// 不碰用户自己的浏览器；"退出并清除"就是删这个目录（SPEC-007 三.4）。</summary>
+    public static string WebViewProfile => Path.Combine(Root, "webview2");
     public static string Logs => EnsureDir(Path.Combine(Root, "logs"));
 
     /// <summary>日志文件按天一份，供亲友出问题时把文本发回来定位（FR-23）。</summary>

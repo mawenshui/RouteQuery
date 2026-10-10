@@ -23,6 +23,9 @@
   <ItemGroup>
     <ProjectReference Include="..\RouteQuery.Core\RouteQuery.Core.csproj" />
     <ProjectReference Include="..\RouteQuery.Data\RouteQuery.Data.csproj" />
+    <!-- 引用 App 工程只为了测 DomainGuard 这类纯函数。它住在界面层，但一行 WPF 都不碰——
+         "白名单判定不依赖 UI"这件事本身就是被这条引用证明的。 -->
+    <ProjectReference Include="..\RouteQuery.App\RouteQuery.App.csproj" />
   </ItemGroup>
 
 </Project>

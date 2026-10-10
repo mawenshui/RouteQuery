@@ -208,10 +208,18 @@
             </TabItem>
 
             <TabItem Header="{DynamicResource 页签_中转}">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="560">
-                    <TextBlock Text="{DynamicResource 中转_未登录}" TextWrapping="Wrap" TextAlignment="Center" FontSize="14"/>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="600">
+                    <TextBlock Text="{Binding SessionSummary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="14"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,14,0,0">
+                        <Button Content="{DynamicResource 登录_按钮}" Padding="14,5" Click="Login_Click"/>
+                        <Button Content="{DynamicResource 登录_退出}" Padding="14,5" Margin="10,0,0,0"
+                                Visibility="{Binding HasLoginSession, Converter={StaticResource BoolVis}}"
+                                Click="Logout_Click"/>
+                    </StackPanel>
+
                     <TextBlock Text="{DynamicResource 中转_本版未做}" TextWrapping="Wrap" TextAlignment="Center"
-                               Margin="0,10,0,0" Style="{StaticResource HintText}"/>
+                               Margin="0,16,0,0" Style="{StaticResource HintText}"/>
                 </StackPanel>
             </TabItem>
         </TabControl>
