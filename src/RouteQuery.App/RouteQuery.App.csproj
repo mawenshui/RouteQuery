@@ -18,7 +18,7 @@
     <!-- 分发件叫 RouteQuery.exe：工程名带 .App 后缀是给开发者看的，不该出现在亲友的桌面上（SPEC-006 发布物清单） -->
     <AssemblyName>RouteQuery</AssemblyName>
     <!-- 版本号的唯一来源（SPEC-006 一）。界面"关于"页与发布说明都读这里，禁止在文案里手写版本串 -->
-    <Version>0.1.0-rc1</Version>
+    <Version>0.2.0-rc1</Version>
   </PropertyGroup>
 
 </Project>
