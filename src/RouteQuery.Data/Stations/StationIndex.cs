@@ -15,17 +15,20 @@ public sealed class StationIndex : IStationRepository
     private readonly StationTable _table;
     private readonly List<Station> _all;
     private readonly Dictionary<string, Station> _byTelecode;
+    private readonly Dictionary<string, Station> _byName;
 
     public StationIndex(StationTable table)
     {
         _table = table;
         _all = [.. table.Items];
         _byTelecode = new Dictionary<string, Station>(StringComparer.Ordinal);
+        _byName = new Dictionary<string, Station>(StringComparer.Ordinal);
         foreach (var s in _all)
         {
-            // 三字码重复时保留第一条而不是覆盖：官方码表理论唯一，出现重复说明数据源有问题，
+            // 重复时保留第一条而不是覆盖：官方码表理论唯一，出现重复说明数据源有问题，
             // 覆盖会让后续排查指向错误的站。
             _byTelecode.TryAdd(s.Telecode, s);
+            _byName.TryAdd(s.Name, s);
         }
     }
 
@@ -66,6 +69,9 @@ public sealed class StationIndex : IStationRepository
 
     public Station? FindByTelecode(string telecode) =>
         _byTelecode.TryGetValue(telecode, out var s) ? s : null;
+
+    public Station? FindByName(string name) =>
+        _byName.TryGetValue(name, out var s) ? s : null;
 
     private int Score(Station s, string raw, string lowered, bool isAscii)
     {

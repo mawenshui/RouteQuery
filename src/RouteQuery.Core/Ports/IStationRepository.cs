@@ -26,4 +26,11 @@ public interface IStationRepository
 
     /// <summary>按三字码取站；未收录时返回 null（调用方据此报 InputInvalid，不发请求）。</summary>
     Station? FindByTelecode(string telecode);
+
+    /// <summary>
+    /// 按站名精确取站。用于把经停站接口返回的<b>站名</b>还原成三字码——
+    /// 那个接口不返回三字码，而拿站名冒充三字码去请求官方是伪造标识符，绝不允许。
+    /// 未收录时返回 null，调用方应放弃该候选并说明原因，而不是猜一个。
+    /// </summary>
+    Station? FindByName(string name);
 }

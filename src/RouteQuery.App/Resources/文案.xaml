@@ -1,0 +1,121 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- 全项目唯一允许存放用户可见文案的地方（SPEC-004 五.5）。
+         措辞规则：发生了什么 + 下一步做什么；不出现英文报错、接口编号或异常类型。
+         漏配键时 ResourceTextProvider 会在界面上显示"[缺少文案 键名]"，所以缺句子是刺眼的，不会被当成"这里本来没字"。 -->
+
+    <sys:String x:Key="应用名">RouteQuery 列车查询</sys:String>
+    <sys:String x:Key="声明_非官方">本工具非官方，仅提供查询；购票请前往 12306</sys:String>
+    <sys:String x:Key="声明_首次标题">使用前请先看一句</sys:String>
+    <sys:String x:Key="声明_首次正文">这不是 12306 官方应用，只是一个把官方查询结果整理得更易读的本地小工具。&#10;它不买票、不候补、不保存你的密码，也不会替你向官方发很多次请求。&#10;票价与余票随时在变，最终以 12306 页面显示为准。&#10;&#10;点"确定"表示你了解以上几点并继续使用；点"取消"则不打开查询界面。</sys:String>
+
+    <sys:String x:Key="提示_站点数据">站点数据日期</sys:String>
+    <sys:String x:Key="提示_可查范围">可查范围：今日起 15 天内</sys:String>
+    <sys:String x:Key="提示_官方未给出">官方未给出</sys:String>
+    <sys:String x:Key="提示_无官方数据">官方未给出票价</sys:String>
+
+    <sys:String x:Key="标签_出发站">出发站</sys:String>
+    <sys:String x:Key="标签_到达站">到达站</sys:String>
+
+    <sys:String x:Key="按钮_查询">查询</sys:String>
+    <sys:String x:Key="按钮_查询中">查询中…</sys:String>
+    <sys:String x:Key="按钮_取消">取消</sys:String>
+    <sys:String x:Key="按钮_互换">⇅</sys:String>
+    <sys:String x:Key="按钮_重试">重试</sys:String>
+    <sys:String x:Key="按钮_看经停">经停站</sys:String>
+    <sys:String x:Key="按钮_多买几站">多买几站</sys:String>
+    <sys:String x:Key="按钮_开始扩展">开始查询</sys:String>
+    <sys:String x:Key="按钮_跳官方">到 12306 查看</sys:String>
+
+    <sys:String x:Key="快捷_今天">今天</sys:String>
+    <sys:String x:Key="快捷_明天">明天</sys:String>
+    <sys:String x:Key="快捷_后天">后天</sys:String>
+
+    <sys:String x:Key="页签_直达">直达车次</sys:String>
+    <sys:String x:Key="页签_中转">中转换乘（需登录）</sys:String>
+
+    <sys:String x:Key="筛选_车型">车型</sys:String>
+    <sys:String x:Key="筛选_时段">时段</sys:String>
+    <sys:String x:Key="筛选_只看有票">只看有票</sys:String>
+    <sys:String x:Key="筛选_当天到达">当天到达</sys:String>
+    <sys:String x:Key="筛选_清除">清除筛选</sys:String>
+    <sys:String x:Key="排序_标题">排序</sys:String>
+
+    <sys:String x:Key="状态_空">还没有查询。选好两站和日期，点查询。</sys:String>
+    <sys:String x:Key="状态_加载">正在向官方查询，请稍候…</sys:String>
+    <sys:String x:Key="状态_无结果">这个日期没有直达车次。换个日期，或看看中转。</sys:String>
+    <sys:String x:Key="状态_筛选后空">当前筛选条件下没有车次。试试清除筛选。</sys:String>
+    <sys:String x:Key="状态_结果数">共 {0} 趟车</sys:String>
+    <sys:String x:Key="状态_剩余额度">今日还可查询 {0} 次</sys:String>
+
+    <!-- 错误文案：一类一条，措辞必须让人知道下一步做什么 -->
+    <sys:String x:Key="错误_输入无效">请先把出发站和到达站都选出来，两站不能相同。</sys:String>
+    <sys:String x:Key="错误_日期越界">这个日期不在可查范围内，请重新选。</sys:String>
+    <sys:String x:Key="错误_网络不可用">连不上网络。检查一下这台机器的网络，然后点重试。</sys:String>
+    <sys:String x:Key="错误_超时">官方响应有点慢，这次查询先取消了。可以稍后再试。</sys:String>
+    <sys:String x:Key="错误_被拒绝">官方查询暂时不可用，过几分钟再试。这不是你的网络问题，反复点也没有用。</sys:String>
+    <sys:String x:Key="错误_格式变更">官方数据格式变了，这个版本查不了。请把这条提示截图发给我，我给你新版。</sys:String>
+    <sys:String x:Key="错误_数据缺失">官方没有返回这一项数据，所以这里算不出来。等一会儿再试，或到 12306 官网查。</sys:String>
+    <sys:String x:Key="错误_太频繁">稍等几秒再查询，连着点官方会限制。</sys:String>
+    <sys:String x:Key="错误_正在查询">上一次查询还在进行中。</sys:String>
+    <sys:String x:Key="错误_今日太多">今天查询次数已经比较多，请降低频率，过些时候再查。</sys:String>
+    <sys:String x:Key="错误_站点数据缺失">内置站点数据读不出来。请重新安装本工具。</sys:String>
+    <sys:String x:Key="错误_已取消">查询已取消。</sys:String>
+    <sys:String x:Key="崩溃_标题">出了点问题</sys:String>
+    <sys:String x:Key="错误_意外崩溃">刚才出了个没预料到的问题，已经先记到本地日志了。窗口还能继续用；如果反复出现，请把这句话截图发给我。</sys:String>
+
+    <sys:String x:Key="扩展_标题">多买几站</sys:String>
+    <sys:String x:Key="扩展_上限">最多扩展站数</sys:String>
+    <sys:String x:Key="扩展_预估">预计约 {0} 秒，共 {1} 个方案要查</sys:String>
+    <sys:String x:Key="扩展_进度">已完成 {0} / {1}</sys:String>
+    <sys:String x:Key="扩展_剩余额度">今日还可查询 {0} 次</sys:String>
+    <sys:String x:Key="扩展_未查完">还有 {0} 个候选没查到，可继续下一批</sys:String>
+    <sys:String x:Key="扩展_不可售">这趟车在该区间不售</sys:String>
+    <sys:String x:Key="扩展_无法计算">无法计算</sys:String>
+    <sys:String x:Key="扩展_异常">价格数据异常，已不按结果展示</sys:String>
+    <sys:String x:Key="扩展_中止">官方暂时不接受更多查询，本次扩展已停止。已查到的结果仍在下方。</sys:String>
+    <sys:String x:Key="扩展_说明">"多买几站"指把票买到更前面的上车站或更后面的下车站；多花多少钱按官方票价算，实际以下单时 12306 页面显示为准。</sys:String>
+
+    <sys:String x:Key="席别_商务座">商务座</sys:String>
+    <sys:String x:Key="席别_一等座">一等座</sys:String>
+    <sys:String x:Key="席别_二等座">二等座</sys:String>
+    <sys:String x:Key="席别_特等座">特等座</sys:String>
+    <sys:String x:Key="席别_高级软卧">高级软卧</sys:String>
+    <sys:String x:Key="席别_软卧">软卧/动卧/一等卧</sys:String>
+    <sys:String x:Key="席别_硬卧">硬卧/二等卧</sys:String>
+    <sys:String x:Key="席别_软座">软座</sys:String>
+    <sys:String x:Key="席别_硬座">硬座</sys:String>
+    <sys:String x:Key="席别_无座">无座</sys:String>
+    <sys:String x:Key="席别_其他">其他</sys:String>
+    <sys:String x:Key="席别_未确认">未确认席别</sys:String>
+
+    <sys:String x:Key="余票_有">有</sys:String>
+    <sys:String x:Key="余票_无">无</sys:String>
+    <sys:String x:Key="余票_候补">候补</sys:String>
+    <sys:String x:Key="余票_未开售">未开售</sys:String>
+    <sys:String x:Key="余票_无数据">—</sys:String>
+
+    <sys:String x:Key="经停_始发">始发</sys:String>
+    <sys:String x:Key="经停_终到">终到</sys:String>
+    <sys:String x:Key="经停_不适用">—</sys:String>
+
+    <sys:String x:Key="详情_标题">经停站与多买几站</sys:String>
+    <sys:String x:Key="详情_经停标题">经停时刻表</sys:String>
+    <sys:String x:Key="详情_空提示">选中一趟车后点"经停站"，这里会列出官方给出的全部停靠站。</sys:String>
+    <sys:String x:Key="详情_站序">站序</sys:String>
+    <sys:String x:Key="详情_站名">站名</sys:String>
+    <sys:String x:Key="详情_到时">到时</sys:String>
+    <sys:String x:Key="详情_发时">发时</sys:String>
+    <sys:String x:Key="详情_停留">停留</sys:String>
+
+    <sys:String x:Key="跳转_提示">到 12306 查询页后请手动输入：{0} → {1}，日期 {2}。</sys:String>
+    <sys:String x:Key="跳转_未选">先在列表里选中一趟车，再点到 12306 查看。</sys:String>
+    <sys:String x:Key="跳转_失败">没能叫出你的默认浏览器。请自己打开 12306 网站查询。</sys:String>
+
+    <sys:String x:Key="中转_未登录">查看官方换乘方案需要先登录 12306 账号；本工具不会保存你的密码，登录在官方页面里完成。</sys:String>
+    <sys:String x:Key="中转_本版未做">内嵌登录（WebView2）在下一个版本提供。本版可正常使用直达查询与"多买几站"。</sys:String>
+
+</ResourceDictionary>
