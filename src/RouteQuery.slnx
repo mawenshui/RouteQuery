@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RouteQuery.App/RouteQuery.App.csproj" />
+  <Project Path="RouteQuery.Core/RouteQuery.Core.csproj" />
+  <Project Path="RouteQuery.Data/RouteQuery.Data.csproj" />
+  <Project Path="RouteQuery.Tests/RouteQuery.Tests.csproj" />
+</Solution>

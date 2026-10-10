@@ -1,0 +1,22 @@
+{
+  "_元信息": {
+    "采集日期": "2026-10-09",
+    "接口": "API-02 直达余票",
+    "场景": "正常无结果（NoResult）",
+    "查询": "bup(板城) → tbu(桐庐东), 2026-10-14",
+    "要点": "这是\"官方告诉你没有\"的完整形态：status=true、httpstatus=200、data.result=[]、map={}。界面必须渲染为空状态而不是错误弹窗（FR-10），且不得与 ParseFailure/DataUnavailable 混用（NFR-18 / AGENTS 七.6）。",
+    "脱敏": "响应不含 Cookie 或账号信息"
+  },
+  "原始响应": {
+    "httpstatus": 200,
+    "data": {
+      "result": [],
+      "flag": "1",
+      "level": "0",
+      "sametlc": "N",
+      "map": {}
+    },
+    "messages": "",
+    "status": true
+  }
+}

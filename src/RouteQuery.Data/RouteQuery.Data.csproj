@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\RouteQuery.Core\RouteQuery.Core.csproj" />
+  </ItemGroup>
+
+  <!-- 内置站点码表：随构建输出，保证断网也能完成一次查询（FR-18 / NFR-11） -->
+  <ItemGroup>
+    <None Update="Resources\stations.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

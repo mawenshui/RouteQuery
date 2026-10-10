@@ -15,7 +15,7 @@
 
 | 对象 | 语言 | 例外 |
 |---|---|---|
-| 文档文件名 | **中文** | 工具强制约定的文件名：`AGENTS.md`、`README.md`、`.gitignore`、`*.sln`、`*.csproj` |
+| 文档文件名 | **中文** | 工具强制约定的文件名：`AGENTS.md`、`README.md`、`.gitignore`、`*.sln` / `*.slnx`、`*.csproj` |
 | 文档内容 | **中文** | 代码片段、命令行、专有名词（如 `telecode`、`train_no`、`leftTicket`）、URL |
 | 代码目录与源文件名 | **英文** | 编译器/IDE 对非 ASCII 路径支持不稳定 |
 | 代码注释 | **中文** | 见《代码规范》第四节 |
