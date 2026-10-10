@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using RouteQuery.Core.Model;
+using RouteQuery.Data.Store;
 
 namespace RouteQuery.Data.Stations;
 
@@ -28,6 +29,38 @@ public static class StationTableLoader
 {
     /// <summary>内置码表相对程序目录的路径。</summary>
     public const string BundledRelativePath = "Resources/stations.json";
+
+    /// <summary>
+    /// 加载"手动更新后"的本地码表；不存在或校验不过时返回 null，由调用方退回内置副本。
+    /// <para>这条退回路径是 FR-18 验收②的实现：<b>更新失败绝不能让应用变成不可用</b>。</para>
+    /// </summary>
+    public static StationTable? LoadUpdated(string? path = null)
+    {
+        var file = path ?? AppPaths.Stations;
+        try
+        {
+            if (!File.Exists(file)) return null;
+            var doc = Deserialize(ReadUtf8(file));
+            if (doc is null) return null;
+
+            var items = doc.Stations.Select(ToStation).ToList();
+            if (!StationNameLoader.IsPlausible(items)) return null;
+            return new StationTable(DateOnly.Parse(doc.SourceDate, System.Globalization.CultureInfo.InvariantCulture), items);
+        }
+        catch (Exception)
+        {
+            return null;   // 坏文件等同"没有更新过"，用内置副本
+        }
+    }
+
+    /// <summary>把一份校验过的码表写成本地副本（原子替换）。</summary>
+    public static void SaveUpdated(StationTable table, string? path = null)
+    {
+        var file = path ?? AppPaths.Stations;
+        var doc = new StationDoc(table.SourceDate.ToString("yyyy-MM-dd"), table.Items.Count,
+            table.Items.Select(s => new StationRow(s.Name, s.Telecode, s.Pinyin, s.ShortPinyin, s.CityCode, s.CityName)).ToList());
+        JsonFileStore.WriteAtomic(file, System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+    }
 
     /// <summary>加载内置码表。</summary>
     /// <exception cref="InvalidOperationException">内置副本缺失或规模异常。此时应用必须禁用查询并说明原因（BF-03）。</exception>

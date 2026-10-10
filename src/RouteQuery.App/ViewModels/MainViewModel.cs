@@ -23,6 +23,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private readonly IOfficialSession _session;
     private readonly IRouteBook _book;
     private readonly IQueryHistory _history;
+    private readonly IStationTableUpdater _stationUpdate;
 
     private Station? _from;
     private Station? _to;
@@ -53,7 +54,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         IOfficialLinkProvider links,
         IOfficialSession session,
         IRouteBook book,
-        IQueryHistory history)
+        IQueryHistory history,
+        IStationTableUpdater stationUpdate)
     {
         _stations = stations;
         _query = query;
@@ -66,6 +68,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         _session = session;
         _book = book;
         _history = history;
+        _stationUpdate = stationUpdate;
         _statusText = text.Get("状态_空");
         _dailyRemaining = _budget.DailyRemaining;
 
@@ -82,12 +85,14 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         QueryCommand = new Mvvm.AsyncCommand(QueryAsync);
         LoadStopsCommand = new Mvvm.AsyncCommand(LoadStopsAsync);
         RunExtensionCommand = new Mvvm.AsyncCommand(RunExtensionAsync);
+        UpdateStationsCommand = new Mvvm.AsyncCommand(UpdateStationsAsync);
         OpenOfficialCommand = new Mvvm.AsyncCommand(OpenOfficialAsync);
     }
 
     public Mvvm.AsyncCommand QueryCommand { get; }
     public Mvvm.AsyncCommand LoadStopsCommand { get; }
     public Mvvm.AsyncCommand RunExtensionCommand { get; }
+    public Mvvm.AsyncCommand UpdateStationsCommand { get; }
     public Mvvm.AsyncCommand OpenOfficialCommand { get; }
 
     /// <summary>
@@ -127,6 +132,12 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     }
 
     private string _bookStatus = string.Empty;
+
+    /// <summary>给设置一类的辅助界面复用同一行反馈位，避免各处自造状态文本。</summary>
+    public void ShowBookStatus(string text) => BookStatus = text;
+
+    /// <summary>版本号。唯一来源是 csproj（SPEC-006 一），界面与日志都读这里。</summary>
+    public string AppVersion => Composition.Version;
 
     /// <summary>把当前条件存成收藏。名字用"出发→到达"，够认就行，不做重名编辑。</summary>
     public void SaveCurrentRoute()
@@ -206,6 +217,9 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
 
     /// <summary>登录页地址。字符串由数据层给出，界面只负责交给 WebView2（AGENTS 第六节）。</summary>
     public string LoginPageUrl => _links.LoginPageUrl;
+
+    /// <summary>可读取 Cookie 的范围地址。同样由数据层给出（AGENTS 第六节）。</summary>
+    public string CookieScopeUrl => _links.CookieScopeUrl;
 
     /// <summary>会话端口本身。登录窗口需要写它，退出按钮需要清它——都是 Core 接口，
     /// 界面拿到的是一个只有"写与清"的对象，拿不到 Cookie。</summary>
@@ -535,8 +549,25 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     /// <summary>查询按钮文案。进行中改文案并禁用，避免用户重复触发（FR-08）。</summary>
     public string QueryButtonText => IsLoading ? _text.Get("按钮_查询中") : _text.Get("按钮_查询");
 
+    /// <summary>更新站点码表（FR-18 的手动入口）。失败只回一句话，不动当前可用的码表。</summary>
+    private async Task UpdateStationsAsync(CancellationToken ct)
+    {
+        var r = await _stationUpdate.UpdateAsync(ct);
+        // 更新成功也不换内存里的索引：换索引意味着把正在显示的结果、收藏解析全部重算一遍，
+        // 收益小而出错面大。FR-22 允许"明确提示需重启"，这里就照那条走。
+        BookStatus = r.Succeeded
+            ? string.Format(_text.Get("码表_已更新"), r.Count, r.SourceDate.ToString("yyyy-MM-dd"))
+            : r.FailureReason ?? _text.Get("错误_数据缺失");
+    }
+
     /// <summary>状态栏的站点数据日期，让亲友能自查是不是码表过期（FR-18）。</summary>
     public string StationDataDate => _stations.IsLoaded ? _stations.SourceDate.ToString("yyyy-MM-dd") : "未载入";
+    /// <summary>码表用了多少天。FR-18 规定"超 90 天给弱提示"，注意是弱提示不是弹窗。</summary>
+    public int StationDataAgeDays => _stations.IsLoaded ? DateOnly.FromDateTime(DateTime.Today).DayNumber - _stations.SourceDate.DayNumber : 0;
+
+    /// <summary>是否该提示更新码表（阈值来自 FR-18；SPEC-007 的缓存表里写的是 30 天，两处不一致，
+    /// 以需求文档为准并已记录待你定）。</summary>
+    public bool StationDataStale => _stations.IsLoaded && StationDataAgeDays > 90;
 
     public Mvvm.AsyncCommand ClearFiltersCommand => _clear ??= new Mvvm.AsyncCommand(_ => { ClearFilters(); return Task.CompletedTask; });
     private Mvvm.AsyncCommand? _clear;

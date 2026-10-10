@@ -20,7 +20,8 @@ public sealed record UpstreamResponse(string Body, string? RedirectTo);
 /// </summary>
 public sealed class OfficialClient : IDisposable
 {
-    private const string Origin = "https://kyfw.12306.cn";
+    /// <summary>官方站点根地址。也是"允许读哪一站 Cookie"的唯一出处。</summary>
+    public const string Origin = "https://kyfw.12306.cn";
     public const string InitUrl = Origin + "/otn/leftTicket/init";
 
     /// <summary>日志里用的接口标签。SPEC-007 第九节规定 <c>API-xx</c> 只出现在文档与日志，
@@ -28,8 +29,10 @@ public sealed class OfficialClient : IDisposable
     public const string ApiSession = "API-01 会话";
     public const string ApiLeftTicket = "API-02 余票";
     public const string ApiStopStations = "API-04 经停站";
+    public const string ApiStationNames = "API-01 站点码表";
     private const string LeftTicketPath = Origin + "/otn/leftTicket/";
     private const string StopStationsPath = Origin + "/otn/czxx/queryByTrainNo";
+    private const string StationNamesPath = Origin + "/otn/resources/js/framework/station_name.js";
 
     /// <summary>只用一个常见桌面 UA，不做指纹轮换（SPEC-007 三.6）。</summary>
     private const string UserAgent =
@@ -97,6 +100,10 @@ public sealed class OfficialClient : IDisposable
             + "&to_station_telecode=" + Uri.EscapeDataString(toTelecode)
             + "&depart_date=" + travelDate.ToString("yyyy-MM-dd"),   // 必须是这个格式
             ct);
+
+    /// <summary>取官方站点码表原文（一次请求）。用于设置页的"更新站点数据"（FR-18）。</summary>
+    public Task<UpstreamResponse> GetStationNamesAsync(CancellationToken ct) =>
+        GetAsync(StationNamesPath, string.Empty, ct);
 
     /// <summary>直接取一个绝对地址，用于跟随官方引导的新路径。</summary>
     public Task<UpstreamResponse> GetAbsoluteAsync(string url, CancellationToken ct) =>

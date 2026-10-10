@@ -28,12 +28,15 @@ public partial class MainWindow : Window
     /// 用户可能在里面登录了、也可能什么都没做，两种情况界面都要如实反映。</summary>
     private void Login_Click(object sender, RoutedEventArgs e)
     {
-        var page = new Web.OfficialLoginPage(Vm.LoginPageUrl, Vm.Session) { Owner = this };
+        var page = new Web.OfficialLoginPage(Vm.LoginPageUrl, Vm.Session, Vm.CookieScopeUrl) { Owner = this };
         page.ShowDialog();
         Vm.NotifySessionChanged();
     }
 
     private void Logout_Click(object sender, RoutedEventArgs e) => Vm.ClearSession();
+
+    private void Settings_Click(object sender, RoutedEventArgs e) =>
+        new Web.SettingsWindow { Owner = this, DataContext = Vm }.ShowDialog();
 
     // ── 侧栏：收藏与历史（FR-16 / FR-17）────────────────────
     private void SaveRoute_Click(object sender, RoutedEventArgs e) => Vm.SaveCurrentRoute();

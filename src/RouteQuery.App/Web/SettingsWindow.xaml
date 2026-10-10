@@ -1,0 +1,83 @@
+<Window x:Class="RouteQuery.App.Web.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:RouteQuery.App.Converters"
+        Title="{DynamicResource 设置_标题}"
+        Width="560" Height="620" MinWidth="460" MinHeight="440"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13">
+
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolVis"/>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#8A8A8A"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="16">
+        <Button DockPanel.Dock="Bottom" Content="{DynamicResource 按钮_关闭}" HorizontalAlignment="Right"
+                Padding="16,5" Margin="0,12,0,0" Click="Close_Click"/>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <!-- 上限：这是本应用唯一的"刹车"型设置项（FR-22 注脚） -->
+            <GroupBox Header="{DynamicResource 设置_上限}" Padding="10">
+                <StackPanel Orientation="Horizontal">
+                    <ComboBox Width="72" ItemsSource="{Binding StationChoices}"
+                              SelectedItem="{Binding MaxExtensionStations}"/>
+                    <TextBlock Margin="12,0,0,0" Style="{StaticResource Hint}"
+                               Text="{Binding ExtensionSummary}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="{DynamicResource 设置_码表}" Padding="10" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock>
+                        <Run Text="{DynamicResource 提示_站点数据}"/><Run Text=" "/>
+                        <Run Text="{Binding StationDataDate, Mode=OneWay}" FontWeight="SemiBold"/>
+                    </TextBlock>
+                    <TextBlock Margin="0,6,0,0" Foreground="#B3541E" TextWrapping="Wrap"
+                               Visibility="{Binding StationDataStale, Converter={StaticResource BoolVis}}">
+                        <Run Text="{Binding StationDataAgeDays, Mode=OneWay}"/><Run Text=" "/><Run Text="{DynamicResource 设置_码表过期}"/>
+                    </TextBlock>
+                    <Button Content="{DynamicResource 设置_更新码表}" HorizontalAlignment="Left" Padding="12,4"
+                            Margin="0,8,0,0" Command="{Binding UpdateStationsCommand}"/>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="{DynamicResource 设置_登录区}" Padding="10" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding SessionSummary}" Style="{StaticResource Hint}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="{DynamicResource 登录_按钮}" Padding="12,4" Click="Login_Click"/>
+                        <Button Content="{DynamicResource 登录_退出}" Padding="12,4" Margin="8,0,0,0"
+                                Visibility="{Binding HasLoginSession, Converter={StaticResource BoolVis}}"
+                                Click="Logout_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="{DynamicResource 设置_数据区}" Padding="10" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource 设置_位置}" Style="{StaticResource Hint}"/>
+                    <Button Content="{DynamicResource 设置_清空}" HorizontalAlignment="Left" Padding="12,4"
+                            Margin="0,8,0,0" Click="ClearAll_Click"/>
+                    <TextBlock Margin="0,8,0,0" Text="{Binding BookStatus}" TextWrapping="Wrap"
+                               Foreground="#1B6B3A"/>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="{DynamicResource 关于_标题}" Padding="10" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding AboutVersionText}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{DynamicResource 声明_非官方}" Style="{StaticResource Hint}"/>
+                    <Button Content="{DynamicResource 声明_再看}" HorizontalAlignment="Left" Padding="12,4"
+                            Margin="0,8,0,0" Click="Disclaimer_Click"/>
+                </StackPanel>
+            </GroupBox>
+          </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

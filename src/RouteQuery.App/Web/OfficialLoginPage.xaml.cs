@@ -17,13 +17,15 @@ public partial class OfficialLoginPage : Window
 {
     private readonly IOfficialSession _session;
     private readonly ITextProvider _text;
+    private readonly string _cookieScope;
 
     /// <param name="startUrl">登录页地址。由数据层给出，App 不拼 URL（AGENTS 第六节）。</param>
-    public OfficialLoginPage(string startUrl, IOfficialSession session)
+    public OfficialLoginPage(string startUrl, IOfficialSession session, string cookieScope)
     {
         InitializeComponent();
         _session = session;
         _text = Composition.Text;
+        _cookieScope = cookieScope;
 
         Loaded += async (_, _) => await StartAsync(startUrl);
     }
@@ -89,7 +91,7 @@ public partial class OfficialLoginPage : Window
     {
         if (Web.CoreWebView2 is not { } core) return;
 
-        var cookies = await core.CookieManager.GetCookiesAsync("https://kyfw.12306.cn");
+        var cookies = await core.CookieManager.GetCookiesAsync(_cookieScope);
         if (cookies.Count == 0)
         {
             StatusLine.Text = _text.Get("登录_未取到Cookie");

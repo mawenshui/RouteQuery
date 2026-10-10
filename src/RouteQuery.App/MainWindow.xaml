@@ -377,6 +377,8 @@
             </TextBlock>
             <TextBlock DockPanel.Dock="Left" Margin="20,0,0,0" Style="{StaticResource HintText}"
                        Text="{Binding StatusText}"/>
+            <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_设置}" Padding="10,2" Margin="12,0,0,0"
+                    Click="Settings_Click"/>
             <TextBlock DockPanel.Dock="Right" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"/>
         </DockPanel>
     </Grid>

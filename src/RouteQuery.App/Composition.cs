@@ -1,3 +1,4 @@
+using System.IO;
 using System.Reflection;
 using RouteQuery.App.Text;
 using RouteQuery.Core.Model;
@@ -45,6 +46,26 @@ public static class Composition
         }
     }
 
+    /// <summary>
+    /// 清空本机数据（FR-22）。删的是我们自己的整个目录：设置、码表副本、端点缓存、
+    /// 当日计数、加密会话、WebView 私有配置、日志。
+    /// <para>刻意<b>不</b>逐个文件挑着删：漏一个就是"用户以为清了其实没清"，
+    /// 而这类"以为清了"在涉及凭据的应用里是最不该出现的错。</para>
+    /// </summary>
+    public static void ClearLocalData()
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(Data.Store.AppPaths.Settings)!;
+            var root = Directory.GetParent(dir);
+            if (root is not null && root.Name == Data.Store.AppPaths.AppFolderName) root.Delete(recursive: true);
+        }
+        catch (Exception)
+        {
+            // 有文件被占用时不抛：调用方随后会提示"重启后才是全新状态"，那时删得掉。
+        }
+    }
+
     public static MainViewModel Build()
     {
         var text = Text;
@@ -76,7 +97,7 @@ public static class Composition
         // 现在传给 ViewModel 只会多一个没人用的字段。
         return new MainViewModel(stations, query, stops, extension, settings, new QueryBudgetAdapter(gate), text,
             new OfficialLinkProvider(), session,
-            new JsonRouteBook(), new JsonQueryHistory());
+            new JsonRouteBook(), new JsonQueryHistory(), new StationTableUpdater(client, gate));
     }
 
     /// <summary>版本号的唯一来源是 csproj 的 <c>&lt;Version&gt;</c>（SPEC-006 一）。
@@ -101,7 +122,9 @@ public static class Composition
     {
         try
         {
-            return new StationIndex(StationTableLoader.LoadBundled());
+            // 先取"手动更新过的那份"，没有或坏了才退回内置副本（FR-18 验收②）。
+            var table = StationTableLoader.LoadUpdated() ?? StationTableLoader.LoadBundled();
+            return new StationIndex(table);
         }
         catch (Exception)
         {

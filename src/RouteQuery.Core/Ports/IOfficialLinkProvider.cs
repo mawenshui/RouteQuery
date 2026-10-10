@@ -14,4 +14,9 @@ public interface IOfficialLinkProvider
     /// <summary>官方登录页地址，供 WebView2 宿主作为起始页（FR-24）。
     /// 与上一个成员同样：地址常量属于数据层，App 只拿到字符串。</summary>
     string LoginPageUrl { get; }
+
+    /// <summary>允许读取其 Cookie 的范围地址（SPEC-007 三.2 的"读取 WebView 容器的 Cookie 集合"）。
+    /// 单独给一个成员而不是让界面写死字符串，是为了让"我们能读哪一站的 Cookie"这件事
+    /// 仍然只有数据层一个出处——AGENTS 第六节禁止 App 出现任何 URL。</summary>
+    string CookieScopeUrl { get; }
 }
