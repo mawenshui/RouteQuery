@@ -37,14 +37,14 @@ public sealed class TrainQueryService(
     {
         if (!client.HasSession)
         {
-            await gate.RunAsync(kind,
+            await gate.RunAsync(kind, OfficialClient.ApiSession,
                 ct => client.EnsureSessionAsync(ct), cancellationToken).ConfigureAwait(false);
         }
 
         var url = client.LeftTicketUrl(endpoints.LeftTicketName);
         var query = OfficialClient.LeftTicketQuery(request);
 
-        var first = await gate.RunAsync(kind,
+        var first = await gate.RunAsync(kind, OfficialClient.ApiLeftTicket,
             ct => client.GetLeftTicketAsync(url, query, ct), cancellationToken).ConfigureAwait(false);
 
         var body = first.Body;
@@ -55,7 +55,7 @@ public sealed class TrainQueryService(
             var discovered = EndpointResolver.SuffixFrom(redirect);
             if (discovered is not null) endpoints.SaveLeftTicketSuffix(discovered);
 
-            var second = await gate.RunAsync(kind,
+            var second = await gate.RunAsync(kind, OfficialClient.ApiLeftTicket + "(跟随重定向)",
                 ct => client.GetAbsoluteAsync(redirect, ct), cancellationToken).ConfigureAwait(false);
             body = second.Body;
         }

@@ -1,3 +1,4 @@
+using System.Reflection;
 using RouteQuery.App.Text;
 using RouteQuery.Core.Model;
 using RouteQuery.App.ViewModels;
@@ -6,6 +7,7 @@ using RouteQuery.Data.Http;
 using RouteQuery.Data.Parsing;
 using RouteQuery.Data.Services;
 using RouteQuery.Data.Stations;
+using RouteQuery.Data.Store;
 
 namespace RouteQuery.App;
 
@@ -29,7 +31,7 @@ public static class Composition
         {
             System.IO.File.AppendAllText(
                 Data.Store.AppPaths.TodayLog(),
-                $"{DateTime.Now:O} 未处理异常 {ex.GetType().Name}: {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}");
+                $"{DateTime.Now:O} v{Version} 未处理异常 {ex.GetType().Name}: {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}");
         }
         catch (Exception)
         {
@@ -37,13 +39,19 @@ public static class Composition
         }
     }
 
-    public static MainViewModel Build()    {
+    public static MainViewModel Build()
+    {
         var text = new ResourceTextProvider();
 
         var stations = BuildStations(text);
         var endpoints = new EndpointResolver();
         var client = new OfficialClient();
-        var gate = new RequestGate(new SystemGateClock(), RequestGateOptions.Default);
+
+        // 审计出口先建：闸门一旦放行请求就要落盘，顺序反了会出现"有请求没日志"。
+        var sink = new FileAuditSink(appVersion: Version);
+        var gate = new RequestGate(new SystemGateClock(), RequestGateOptions.Default, sink);
+        if (FileAuditSink.ReadDailyCount() is { } saved) gate.SeedDailyCount(saved.Count, saved.Date);
+
         var parser = new LeftTicketParser(stations);
 
         var query = new TrainQueryService(client, gate, parser, endpoints);
@@ -53,6 +61,20 @@ public static class Composition
 
         return new MainViewModel(stations, query, stops, extension, settings, new QueryBudgetAdapter(gate), text,
             new OfficialLinkProvider());
+    }
+
+    /// <summary>版本号的唯一来源是 csproj 的 <c>&lt;Version&gt;</c>（SPEC-006 一）。
+    /// 日志、"关于"页、发布说明都读这里，禁止在文案里手写版本串。</summary>
+    public static string Version { get; } = ReadVersion();
+
+    private static string ReadVersion()
+    {
+        var info = typeof(Composition).Assembly
+            .GetCustomAttributes<AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion;
+
+        // SDK 会在版本号后拼 +commit。日志里去掉它：带 + 的串容易被误读成"比它更高的版本"。
+        return string.IsNullOrEmpty(info) ? "未知" : info.Split('+')[0];
     }
 
     /// <summary>

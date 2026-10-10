@@ -22,6 +22,12 @@ public sealed class OfficialClient : IDisposable
 {
     private const string Origin = "https://kyfw.12306.cn";
     public const string InitUrl = Origin + "/otn/leftTicket/init";
+
+    /// <summary>日志里用的接口标签。SPEC-007 第九节规定 <c>API-xx</c> 只出现在文档与日志，
+    /// 不进界面——所以这些常量属于客户端层，业务代码只引用它们。</summary>
+    public const string ApiSession = "API-01 会话";
+    public const string ApiLeftTicket = "API-02 余票";
+    public const string ApiStopStations = "API-04 经停站";
     private const string LeftTicketPath = Origin + "/otn/leftTicket/";
     private const string StopStationsPath = Origin + "/otn/czxx/queryByTrainNo";
 

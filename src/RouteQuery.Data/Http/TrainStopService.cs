@@ -29,11 +29,11 @@ public sealed class TrainStopService(OfficialClient client, RequestGate gate) : 
         {
             if (!client.HasSession)
             {
-                await gate.RunAsync(ActionKind.Drilldown,
+                await gate.RunAsync(ActionKind.Drilldown, OfficialClient.ApiSession,
                     ct => client.EnsureSessionAsync(ct), cancellationToken).ConfigureAwait(false);
             }
 
-            var resp = await gate.RunAsync(ActionKind.Drilldown,
+            var resp = await gate.RunAsync(ActionKind.Drilldown, OfficialClient.ApiStopStations,
                 ct => client.GetStopsAsync(trainNo, fromTelecode, toTelecode, travelDate, ct),
                 cancellationToken).ConfigureAwait(false);
             body = resp.Body;

@@ -41,7 +41,7 @@ public sealed record RequestGateOptions(
 /// 否则连点十次会攒出十个请求依次打出去，那是"看起来有节流、实际是队列"的反例；
 /// 扩展批次内部（Extension）则<b>等待</b>到间隔满足再打下一个候选，否则功能直接不可用。</para>
 /// </summary>
-public sealed class RequestGate(IGateClock clock, RequestGateOptions options, Action<string>? audit = null)
+public sealed class RequestGate(IGateClock clock, RequestGateOptions options, IGateSink? sink = null)
 {
     private readonly SemaphoreSlim _serial = new(1, 1);
     private readonly object _sync = new();
@@ -49,15 +49,23 @@ public sealed class RequestGate(IGateClock clock, RequestGateOptions options, Ac
     private DateTimeOffset? _plannedCallAt;   // 上一次调用"实际发出"的时刻（等待后）
     private ActionWindow? _window;
     private int _dailyCount;
+    private DateOnly _dailyDate = DateOnly.FromDateTime(clock.UtcNow.Date);
 
     /// <summary>当日已发出的官方请求数。</summary>
     public int DailyCount { get { lock (_sync) return _dailyCount; } }
+
+    /// <summary>当日计数属于哪一天。落盘时一起写，换日恢复时用来判断该不该沿用。</summary>
+    public DateOnly DailyDate { get { lock (_sync) return _dailyDate; } }
 
     /// <summary>是否登录态，影响当日额度。</summary>
     public bool SignedIn { get; set; }
 
     /// <summary>当日额度是否已用尽。</summary>
     public bool DailyBudgetExhausted { get { lock (_sync) return _dailyCount >= DailyCap; } }
+
+    /// <summary>给上层补一条事件（批次中止、会话清除等）。审计的意义在于"谁都能补一行"，
+    /// 但补的位置必须仍然与记账同侧，否则日志又会变成各写各的。</summary>
+    public void Note(string text) => sink?.Note(text);
 
     /// <summary>当前动作已发出的请求数，批次结束后供界面与日志核对。</summary>
     public int CurrentActionIssued { get { lock (_sync) return _window?.Issued ?? 0; } }
@@ -78,25 +86,43 @@ public sealed class RequestGate(IGateClock clock, RequestGateOptions options, Ac
         }
     }
 
-    /// <summary>当日计数的跨进程恢复。</summary>
-    public void SeedDailyCount(int count)
+    /// <summary>当日计数的跨启动恢复。日期不匹配时不采用——过期的计数会把今天的额度吃掉。</summary>
+    public void SeedDailyCount(int count, DateOnly forDate)
     {
-        lock (_sync) _dailyCount = count;
+        lock (_sync)
+        {
+            if (forDate != DateOnly.FromDateTime(clock.UtcNow.Date)) return;
+            _dailyCount = count;
+            _dailyDate = forDate;
+        }
     }
 
-    /// <summary>在闸门保护下执行一次官方调用。<b>不发请求</b>时抛 <see cref="RateLimitedException"/>。</summary>
-    public async Task<T> RunAsync<T>(ActionKind kind, Func<CancellationToken, Task<T>> work, CancellationToken ct)
+    /// <summary>
+    /// 在闸门保护下执行一次官方调用。<b>不发请求</b>时抛 <see cref="RateLimitedException"/>。
+    /// <para><paramref name="endpoint"/> 是给人看的接口编号标签（如 <c>API-02 余票</c>），
+    /// 只进日志不进界面——SPEC-007 第九节规定 <c>API-xx</c> 只存在于文档与日志里。</para>
+    /// </summary>
+    public async Task<T> RunAsync<T>(ActionKind kind, string endpoint, Func<CancellationToken, Task<T>> work, CancellationToken ct)
     {
         if (!await _serial.WaitAsync(0, ct))
             throw new RateLimitedException(RateLimitReason.AlreadyRunning);
 
         try
         {
-            var wait = Reserve(kind);
+            var wait = Reserve(kind, endpoint);
             if (wait > TimeSpan.Zero)
                 await clock.DelayAsync(wait, ct);
 
-            return await work(ct).ConfigureAwait(false);
+            try
+            {
+                return await work(ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // 失败也要留痕：亲友反馈"查不出来"时，日志里必须能看到是官方拒了还是我们解析错了。
+                sink?.RequestFailed(kind, endpoint, $"{ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
         }
         finally
         {
@@ -105,14 +131,16 @@ public sealed class RequestGate(IGateClock clock, RequestGateOptions options, Ac
     }
 
     /// <summary>无返回值的场合（如建立会话）。与泛型版共用同一套记账，避免"没有返回值就不走闸门"的漏洞。</summary>
-    public Task RunAsync(ActionKind kind, Func<CancellationToken, Task> work, CancellationToken ct) =>
-        RunAsync<object?>(kind, async t => { await work(t).ConfigureAwait(false); return null; }, ct);
+    public Task RunAsync(ActionKind kind, string endpoint, Func<CancellationToken, Task> work, CancellationToken ct) =>
+        RunAsync<object?>(kind, endpoint, async t => { await work(t).ConfigureAwait(false); return null; }, ct);
 
     /// <summary>记账并返回需要等待的时长（0 表示不必等）。该拒绝时在这里抛。</summary>
-    private TimeSpan Reserve(ActionKind kind)
+    private TimeSpan Reserve(ActionKind kind, string endpoint)
     {
         lock (_sync)
         {
+            RollDateIfNeeded();
+
             if (_dailyCount >= DailyCap)
                 throw new RateLimitedException(RateLimitReason.DailyBudgetExceeded);
 
@@ -149,9 +177,23 @@ public sealed class RequestGate(IGateClock clock, RequestGateOptions options, Ac
             _window = window with { Issued = window.Issued + 1 };
             _dailyCount++;
             _plannedCallAt = clock.UtcNow + wait;   // 记的是"实际发出"的时刻，不是"决定要发"的时刻
-            audit?.Invoke($"{kind} 第{_dailyCount}次（本动作剩余预算 {window.Budget - window.Issued - 1}）");
+            sink?.RequestIssued(kind, endpoint, _dailyCount, window.Budget - window.Issued - 1);
             return wait;
         }
+    }
+
+    /// <summary>
+    /// 换日归零。应用长期开着跨过一次午夜时，昨天的计数不该继续吃今天的额度；
+    /// 反过来，如果日志里出现"当日计数从大值突然变 0"，那就是换日而不是丢日志。
+    /// </summary>
+    private void RollDateIfNeeded()
+    {
+        var today = DateOnly.FromDateTime(clock.UtcNow.Date);
+        if (today == _dailyDate) return;
+
+        _dailyDate = today;
+        _dailyCount = 0;
+        sink?.Note($"换日，当日计数归零：{today:yyyy-MM-dd}");
     }
 
     private int BudgetFor(ActionKind kind, int? budgetOverride) => kind switch

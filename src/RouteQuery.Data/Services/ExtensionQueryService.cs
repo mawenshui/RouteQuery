@@ -51,6 +51,8 @@ public sealed class ExtensionQueryService(
         var stopReason = ExtensionStopReason.Completed;
         var issued = 0;
 
+        gate.Note($"扩展批次开始：站序 {stops.Count} 站，候选 {candidates.Count} 个，本轮查 {taken.Count} 个（上限 {budget}）");
+
         using var window = gate.BeginAction(ActionKind.Extension, budget);
 
         foreach (var candidate in taken)
@@ -113,7 +115,10 @@ public sealed class ExtensionQueryService(
             }
         }
 
-        return new ExtensionBatch(outcomes, candidates.Count - taken.Count, stopReason, gate.CurrentActionIssued);
+        var notQueried = candidates.Count - taken.Count;
+        gate.Note($"扩展批次结束：本动作实发 {gate.CurrentActionIssued} 次，结果 {outcomes.Count} 条，未查候选 {notQueried} 个，原因 {stopReason}");
+
+        return new ExtensionBatch(outcomes, notQueried, stopReason, gate.CurrentActionIssued);
     }
 
     /// <summary>

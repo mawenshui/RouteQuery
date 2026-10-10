@@ -76,6 +76,7 @@
     <sys:String x:Key="扩展_不可售">这趟车在该区间不售</sys:String>
     <sys:String x:Key="扩展_无法计算">无法计算</sys:String>
     <sys:String x:Key="扩展_异常">价格数据异常，已不按结果展示</sys:String>
+    <sys:String x:Key="扩展_全程票">这趟车在你查的区间已经是全程票了，前后都没有更多站可买。</sys:String>
     <sys:String x:Key="扩展_中止">官方暂时不接受更多查询，本次扩展已停止。已查到的结果仍在下方。</sys:String>
     <sys:String x:Key="扩展_说明">"多买几站"指把票买到更前面的上车站或更后面的下车站；多花多少钱按官方票价算，实际以下单时 12306 页面显示为准。</sys:String>
 
