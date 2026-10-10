@@ -17,10 +17,19 @@ public sealed class OfficialLinkProvider : IOfficialLinkProvider
     /// 那里正是用户自己输账号密码的那一屏。刻意不另拼一个登录 URL（Q-07 同口径：不猜地址）。</summary>
     public string LoginPageUrl => OfficialClient.InitUrl;
 
-    /// <summary>只读官方自己的两个主机，别的站点一概不读。</summary>
+    /// <summary>
+    /// 只读官方自己的主机，别的站点一概不读。
+    /// <para><b>为什么要带路径列好几条</b>：Cookie 是按"这个 URL 会带上哪些 Cookie"来匹配的，
+    /// 包含路径。12306 的业务会话（<c>JSESSIONID</c> 那一类）通常挂在 <c>/otn</c> 路径下，
+    /// 只问站点根路径就永远拿不到它们——实测"采到 7 条却仍被判未登录"很可能就是这个原因。
+    /// 所以这里按真正要访问的几条路径各问一次，再取并集。</para>
+    /// </summary>
     public IReadOnlyList<string> CookieScopeUrls { get; } =
     [
-        OfficialClient.Origin,                                  // kyfw.12306.cn：查询与业务接口
-        "https://www.12306.cn",                                 // 登录身份相关 Cookie 可能落在这里
+        OfficialClient.Origin + "/",                      // 站点根
+        OfficialClient.Origin + "/otn/",                  // 业务路径：会话 Cookie 的常见挂载点
+        OfficialClient.Origin + "/otn/leftTicket/init",   // 我们实际会打开的那一屏
+        OfficialClient.Origin + "/otn/lcQuery/query",     // 中转接口本身要带的那几条
+        "https://www.12306.cn/",                          // 登录身份可能落在这个主机上
     ];
 }
