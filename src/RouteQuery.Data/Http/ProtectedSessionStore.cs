@@ -74,6 +74,21 @@ public sealed class ProtectedSessionStore(string? path = null) : IOfficialSessio
         }
     }
 
+    /// <summary>取其中一条 Cookie 的值，用于官方要求"把某个会话值再作为请求头回传"的场合
+    /// （中转接口就是如此）。<b>同样是 internal</b>：界面拿不到任何一个值。</summary>
+    internal string? ReadCookieValue(string name)
+    {
+        var header = ReadCookieHeaderForRequest();
+        if (string.IsNullOrEmpty(header)) return null;
+
+        foreach (var pair in header.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq > 0 && string.Equals(pair[..eq], name, StringComparison.Ordinal)) return pair[(eq + 1)..];
+        }
+        return null;
+    }
+
     /// <summary>
     /// 供 HTTP 客户端附带请求用。<b>internal 是刻意的</b>：App 与 Core 拿不到它，
     /// Cookie 值因此不会出现在"界面能调用的任何签名"里。

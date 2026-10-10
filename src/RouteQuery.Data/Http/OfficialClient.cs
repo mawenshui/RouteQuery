@@ -30,9 +30,19 @@ public sealed class OfficialClient : IDisposable
     public const string ApiLeftTicket = "API-02 余票";
     public const string ApiStopStations = "API-04 经停站";
     public const string ApiStationNames = "API-01 站点码表";
+    public const string ApiTransfer = "API-03 中转";
     private const string LeftTicketPath = Origin + "/otn/leftTicket/";
     private const string StopStationsPath = Origin + "/otn/czxx/queryByTrainNo";
     private const string StationNamesPath = Origin + "/otn/resources/js/framework/station_name.js";
+
+    /// <summary>
+    /// 中转接口。<b>注意它不在 <c>/otn/</c> 下</b>——2026-10-10 之前我们一直按
+    /// <c>/otn/lcQuery/query</c> 请求，拿到的是 404，却被误读成"需要登录"。
+    /// </summary>
+    private const string TransferPath = Origin + "/lcquery/queryG";
+
+    /// <summary>中转接口要求请求看起来来自中转页本身（实测：浏览器就是这么发的）。</summary>
+    private const string TransferReferer = Origin + "/otn/lcQuery/init";
 
     /// <summary>只用一个常见桌面 UA，不做指纹轮换（SPEC-007 三.6）。</summary>
     private const string UserAgent =
@@ -105,6 +115,25 @@ public sealed class OfficialClient : IDisposable
     public Task<UpstreamResponse> GetStationNamesAsync(CancellationToken ct) =>
         GetAsync(StationNamesPath, string.Empty, ct);
 
+    /// <summary>
+    /// 取接续换乘方案（一次请求）。对应 FR-06。
+    /// <para>参数口径与余票接口<b>不同</b>：站名参数叫 <c>*_telecode</c>、<c>purpose_codes=00</c>
+    /// （余票那边是 <c>ADULT</c>），且要把会话里的 <c>tk</c> 再作为同名请求头回传一次。
+    /// 这些都是实测得到的，猜不出来。</para>
+    /// </summary>
+    public Task<UpstreamResponse> GetTransferAsync(
+        string fromTelecode, string toTelecode, DateOnly travelDate, CancellationToken ct)
+    {
+        var query = new StringBuilder()
+            .Append("?train_date=").Append(travelDate.ToString("yyyy-MM-dd"))
+            .Append("&from_station_telecode=").Append(Uri.EscapeDataString(fromTelecode))
+            .Append("&to_station_telecode=").Append(Uri.EscapeDataString(toTelecode))
+            .Append("&middle_station=&result_index=0&can_query=Y&isShowWZ=N&purpose_codes=00&channel=E")
+            .ToString();
+
+        return GetAsync(TransferPath, query, ct, ("tk", _session?.ReadCookieValue("tk")), TransferReferer);
+    }
+
     /// <summary>直接取一个绝对地址，用于跟随官方引导的新路径。</summary>
     public Task<UpstreamResponse> GetAbsoluteAsync(string url, CancellationToken ct) =>
         GetAsync(url, string.Empty, ct);
@@ -130,7 +159,9 @@ public sealed class OfficialClient : IDisposable
             ? name
             : "query";
 
-    private async Task<UpstreamResponse> GetAsync(string url, string query, CancellationToken ct)
+    private async Task<UpstreamResponse> GetAsync(
+        string url, string query, CancellationToken ct,
+        (string Name, string? Value)? header = null, string? referer = null)
     {
         HttpResponseMessage resp;
         try
@@ -141,6 +172,11 @@ public sealed class OfficialClient : IDisposable
             using var request = new HttpRequestMessage(HttpMethod.Get, url + query);
             var cookie = _session?.ReadCookieHeaderForRequest();
             if (!string.IsNullOrEmpty(cookie)) request.Headers.TryAddWithoutValidation("Cookie", cookie);
+            if (header is { } h && !string.IsNullOrEmpty(h.Value))
+                request.Headers.TryAddWithoutValidation(h.Name, h.Value);
+            if (referer is not null) request.Headers.Referrer = new Uri(referer);
+            // 官方对 XHR 与普通导航给不同响应；中转接口只认前者。
+            request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
 
             resp = await _http.SendAsync(request, ct).ConfigureAwait(false);
         }
