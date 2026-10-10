@@ -50,4 +50,7 @@ public sealed record TransferPlan(
 
     /// <summary>任一段有票即算"这个方案眼下走得通"。两段都没票时不得显示成有票。</summary>
     public bool HasAnyTicket => First.Seats.Any(s => s.IsAvailable) && Second.Seats.Any(s => s.IsAvailable);
+
+    /// <summary>到达时刻。跨零点时第二段的 arrive_time 是次日钟点，界面另用 ArrivesNextDay 标注。</summary>
+    public string ArrivalTimeText() => $@"{Second.Arrival:hh\:mm}";
 }

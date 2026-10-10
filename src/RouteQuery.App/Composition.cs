@@ -92,12 +92,13 @@ public static class Composition
         var stops = new TrainStopService(client, gate);
         var extension = new ExtensionQueryService(stops, query, gate, stations);
         var settings = new SettingsStore();
+        var transfer = new TransferQueryService(client, gate, session, stations);
 
         // 会话对象目前只进请求路径；"登录状态可见 + 一键清除"随设置页一起做（TASK-33），
         // 现在传给 ViewModel 只会多一个没人用的字段。
         return new MainViewModel(stations, query, stops, extension, settings, new QueryBudgetAdapter(gate), text,
             new OfficialLinkProvider(), session,
-            new JsonRouteBook(), new JsonQueryHistory(), new StationTableUpdater(client, gate));
+            new JsonRouteBook(), new JsonQueryHistory(), new StationTableUpdater(client, gate), transfer);
     }
 
     /// <summary>版本号的唯一来源是 csproj 的 <c>&lt;Version&gt;</c>（SPEC-006 一）。

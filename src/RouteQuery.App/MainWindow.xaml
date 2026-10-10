@@ -255,19 +255,66 @@
             </TabItem>
 
             <TabItem Header="{DynamicResource 页签_中转}">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="600">
-                    <TextBlock Text="{Binding SessionSummary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="14"/>
-
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,14,0,0">
-                        <Button Content="{DynamicResource 登录_按钮}" Padding="14,5" Click="Login_Click"/>
-                        <Button Content="{DynamicResource 登录_退出}" Padding="14,5" Margin="10,0,0,0"
-                                Visibility="{Binding HasLoginSession, Converter={StaticResource BoolVis}}"
-                                Click="Logout_Click"/>
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="600"
+                                Visibility="{Binding HasLoginSession, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
+                        <TextBlock Text="{Binding SessionSummary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="14"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,14,0,0">
+                            <Button Content="{DynamicResource 登录_按钮}" Padding="14,5" Click="Login_Click"/>
+                        </StackPanel>
+                        <TextBlock Text="{DynamicResource 中转_需登录}" TextWrapping="Wrap" TextAlignment="Center"
+                                   Margin="0,14,0,0" Style="{StaticResource HintText}"/>
                     </StackPanel>
 
-                    <TextBlock Text="{DynamicResource 中转_本版未做}" TextWrapping="Wrap" TextAlignment="Center"
-                               Margin="0,16,0,0" Style="{StaticResource HintText}"/>
-                </StackPanel>
+                    <DockPanel Margin="8" Visibility="{Binding HasLoginSession, Converter={StaticResource BoolVis}}">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="{DynamicResource 中转_查询}" Padding="14,5"
+                                    Command="{Binding TransferQueryCommand}"/>
+                            <TextBlock Text="{Binding TransferStatus}" Margin="14,0,0,0"
+                                       VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="620"/>
+                        </StackPanel>
+                        <TextBlock DockPanel.Dock="Bottom" Text="{DynamicResource 中转_说明}" TextWrapping="Wrap"
+                                   Margin="0,8,0,0" FontSize="11" Style="{StaticResource HintText}"/>
+
+                        <ListView ItemsSource="{Binding Transfers}" BorderThickness="0"
+                                  Visibility="{Binding HasTransfers, Converter={StaticResource BoolVis}}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="170"/>
+                                            <ColumnDefinition Width="200"/>
+                                            <ColumnDefinition Width="190"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="150"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding TrainsText}" FontWeight="Bold" FontSize="14"/>
+                                            <TextBlock Text="{Binding TimesText}" FontSize="11" Style="{StaticResource HintText}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding RouteText}"/>
+                                            <TextBlock Text="{Binding TransferText}" FontSize="11" Style="{StaticResource HintText}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding TotalText}" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{DynamicResource 中转_段一}" Style="{StaticResource HintText}" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding FirstSeatsText}"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock Text="{DynamicResource 中转_段二}" Style="{StaticResource HintText}" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding SecondSeatsText}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="4" Text="{Binding PriceText}" VerticalAlignment="Center"
+                                                   Foreground="#B3541E" FontSize="11" TextWrapping="Wrap"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </DockPanel>
+                </Grid>
             </TabItem>
         </TabControl>
 

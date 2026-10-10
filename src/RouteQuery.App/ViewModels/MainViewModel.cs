@@ -23,6 +23,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private readonly IOfficialSession _session;
     private readonly IRouteBook _book;
     private readonly IQueryHistory _history;
+    private readonly ITransferQueryService _transfer;
     private readonly IStationTableUpdater _stationUpdate;
 
     private Station? _from;
@@ -55,7 +56,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         IOfficialSession session,
         IRouteBook book,
         IQueryHistory history,
-        IStationTableUpdater stationUpdate)
+        IStationTableUpdater stationUpdate,
+        ITransferQueryService transfer)
     {
         _stations = stations;
         _query = query;
@@ -69,6 +71,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         _book = book;
         _history = history;
         _stationUpdate = stationUpdate;
+        _transfer = transfer;
         _statusText = text.Get("状态_空");
         _dailyRemaining = _budget.DailyRemaining;
 
@@ -86,6 +89,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         LoadStopsCommand = new Mvvm.AsyncCommand(LoadStopsAsync);
         RunExtensionCommand = new Mvvm.AsyncCommand(RunExtensionAsync);
         UpdateStationsCommand = new Mvvm.AsyncCommand(UpdateStationsAsync);
+        TransferQueryCommand = new Mvvm.AsyncCommand(RunTransferAsync);
         OpenOfficialCommand = new Mvvm.AsyncCommand(OpenOfficialAsync);
     }
 
@@ -93,6 +97,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     public Mvvm.AsyncCommand LoadStopsCommand { get; }
     public Mvvm.AsyncCommand RunExtensionCommand { get; }
     public Mvvm.AsyncCommand UpdateStationsCommand { get; }
+    public Mvvm.AsyncCommand TransferQueryCommand { get; }
     public Mvvm.AsyncCommand OpenOfficialCommand { get; }
 
     /// <summary>
@@ -202,6 +207,67 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     {
         SavedRoutes.Clear();
         foreach (var r in _book.All) SavedRoutes.Add(r);
+    }
+
+    // ── 中转（FR-06 / FR-15）────────────────────────────────
+    public ObservableCollection<TransferRowViewModel> Transfers { get; } = [];
+
+    /// <summary>中转区自己的状态行。它和直达区互不占用：直达出错不该把中转的话盖掉（DEC-05）。</summary>
+    public string TransferStatus
+    {
+        get => _transferStatus;
+        private set { if (Set(ref _transferStatus, value)) Raise(nameof(TransferStatus), nameof(HasTransfers)); }
+    }
+
+    private string _transferStatus = string.Empty;
+
+    public bool HasTransfers => Transfers.Count > 0;
+
+    private async Task RunTransferAsync(CancellationToken ct)
+    {
+        if (_from is not { } f || _to is not { } t)
+        {
+            TransferStatus = _text.Get("错误_输入无效");
+            return;
+        }
+        if (!HasLoginSession)
+        {
+            // 未登录是引导态不是错误态（DEC-08）：说清"不登录能做什么、这一项为什么不行"。
+            TransferStatus = _text.Get("中转_需登录");
+            return;
+        }
+
+        Transfers.Clear();
+        TransferStatus = _text.Get("状态_加载中转");
+
+        try
+        {
+            var r = await _transfer.SearchAsync(f, t, TravelDate, ct);
+            foreach (var p in r.Plans) Transfers.Add(new TransferRowViewModel(p, _text));
+
+            TransferStatus = string.Format(_text.Get("中转_结果数"), r.Plans.Count);
+            if (r.DroppedForNegativeWait > 0 || r.DroppedForShape > 0)
+                TransferStatus += " " + string.Format(_text.Get("中转_已丢弃"),
+                    r.DroppedForNegativeWait + r.DroppedForShape);
+        }
+        catch (QueryException ex) when (ex.Kind == QueryErrorKind.SessionRequired)
+        {
+            // 服务层已经把本地会话清掉了；这里回到引导态，而不是显示一个红色错误。
+            NotifySessionChanged();
+            TransferStatus = _text.Get("中转_会话失效");
+        }
+        catch (QueryException ex)
+        {
+            TransferStatus = QueryErrorText(ex.Kind);
+        }
+        catch (RateLimitedException ex)
+        {
+            TransferStatus = RateLimitText(ex.Reason);
+        }
+        catch (OperationCanceledException)
+        {
+            TransferStatus = _text.Get("错误_已取消");
+        }
     }
 
     // ── 登录态（FR-24 / FR-25）──────────────────────────────

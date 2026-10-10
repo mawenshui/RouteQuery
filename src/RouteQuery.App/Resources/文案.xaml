@@ -164,6 +164,22 @@
     <sys:String x:Key="登录_状态已登录">已取到登录状态（{0}，尚未向官方验证）。它只存在你本机的加密文件里；真正用它取换乘方案时若官方不认，会自动清掉并提示重新登录。</sys:String>
     <sys:String x:Key="登录_退出">退出并清除登录状态</sys:String>
     <sys:String x:Key="登录_已清除">登录状态已清除。</sys:String>
+    <sys:String x:Key="中转_需登录">查官方换乘方案需要先登录。点下面的"登录 12306"，账号密码验证码都在官方页面里由你自己输入。</sys:String>
+    <sys:String x:Key="状态_加载中转">正在向官方查询换乘方案…</sys:String>
+    <sys:String x:Key="中转_结果数">官方给出 {0} 个换乘方案（按官方推荐顺序）</sys:String>
+    <sys:String x:Key="中转_已丢弃">另有 {0} 个方案数据对不上，已不显示。</sys:String>
+    <sys:String x:Key="中转_会话失效">官方不认这份登录状态，已清除。请重新登录一次。</sys:String>
+    <sys:String x:Key="中转_查询">查换乘方案</sys:String>
+    <sys:String x:Key="中转_全程">全程 {0}</sys:String>
+    <sys:String x:Key="中转_换乘">候车 {0}</sys:String>
+    <sys:String x:Key="中转_同站">·同站换乘</sys:String>
+    <sys:String x:Key="中转_异站">·需换车站</sys:String>
+    <sys:String x:Key="中转_需出站">·需出站再进站</sys:String>
+    <sys:String x:Key="中转_次日">次日</sys:String>
+    <sys:String x:Key="中转_无票价">票价官方未给出</sys:String>
+    <sys:String x:Key="中转_段一">第一段</sys:String>
+    <sys:String x:Key="中转_段二">第二段</sys:String>
+    <sys:String x:Key="中转_说明">换乘方案与余票都来自官方接续换乘接口。官方在这个接口里不给票价，所以这里只比时间与余票，不比价格；实际票价以下单时 12306 显示为准。</sys:String>
     <sys:String x:Key="中转_本版未做">官方换乘方案的取数与解析还没完成：登录已经可用，但官方在登录态下返回的换乘数据结构尚未实测过一次。没有实测样本就写解析等于猜数据，所以这一格现在说明原因而不是给结果。</sys:String>
 
 </ResourceDictionary>
