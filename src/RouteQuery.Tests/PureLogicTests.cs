@@ -1,3 +1,4 @@
+using RouteQuery.Core.Errors;
 using RouteQuery.Core.Logic;
 using RouteQuery.Core.Model;
 
@@ -174,5 +175,15 @@ public class PureLogicTests
         return new TrainJourney("G1", "NO1", st, st, st, st,
             new TimeSpan(7, 0, 0), new TimeSpan(8, 0, 0), new TimeSpan(1, 0, 0),
             false, PurchaseState.Buyable, availability, null);
+    }
+    [Fact]
+    public void 查询异常必须把技术细节带进Message()
+    {
+        // 审计日志与本地日志记的都是 ex.Message。细节只放在属性里 = 每条失败日志都是空话。
+        var ex = new QueryException(QueryErrorKind.UpstreamRejected, "HTTP 403");
+        Assert.Contains("HTTP 403", ex.Message);
+        Assert.Equal(QueryErrorKind.UpstreamRejected, ex.Kind);
+
+        Assert.Equal(nameof(QueryErrorKind.Timeout), new QueryException(QueryErrorKind.Timeout).Message);
     }
 }

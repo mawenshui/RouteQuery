@@ -7,10 +7,14 @@ namespace RouteQuery.Core.Errors;
 /// </summary>
 /// <param name="Kind">错误分类，决定界面文案与是否允许重试。</param>
 /// <param name="Detail">供本地日志使用的技术细节；不得包含 Cookie 或账号信息。</param>
-public sealed class QueryException(QueryErrorKind kind, string? detail = null) : Exception
+public sealed class QueryException(QueryErrorKind kind, string? detail = null)
+    : Exception(detail is { Length: > 0 } d ? $"{kind}: {d}" : kind.ToString())
 {
     public QueryErrorKind Kind { get; } = kind;
 
+    /// <summary>技术细节。<b>同时被拼进 <see cref="Exception.Message"/></b>：
+    /// 之前只有这个属性带着它，而日志与审计出口记的都是 <c>ex.Message</c>，
+    /// 结果是每条失败日志都只写着"Exception of type ..."——等于没记。</summary>
     public string? Detail { get; } = detail;
 
     /// <summary>
