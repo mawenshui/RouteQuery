@@ -10,9 +10,22 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 登录态的读取路径刻意是 internal（见 ProtectedSessionStore 注释）。测试要断言
+         "磁盘上没有明文、内存里能取回原值"，只能对这个可见性开一个口子，且只对测试程序集。 -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>RouteQuery.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- 数据层用 DPAPI（仅 Windows）加密登录态，因此本程序集如实声明只在 Windows 上跑：
+         比在代码里逐处压 CA1416 警告诚实，也比"假装跨平台"少一层误导。整个应用本就是 Windows 桌面件。 -->
+    <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

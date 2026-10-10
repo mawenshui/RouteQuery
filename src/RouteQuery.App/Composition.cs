@@ -45,11 +45,18 @@ public static class Composition
 
         var stations = BuildStations(text);
         var endpoints = new EndpointResolver();
-        var client = new OfficialClient();
+
+        // 登录态：本版还没有 WebView2 宿主，所以这里永远是"未登录"。
+        // 先接上而不是等第 4 轮再改一遍——额度、请求附带、退出清除三处都依赖同一个对象。
+        var session = new ProtectedSessionStore();
+        var client = new OfficialClient(session);
 
         // 审计出口先建：闸门一旦放行请求就要落盘，顺序反了会出现"有请求没日志"。
         var sink = new FileAuditSink(appVersion: Version);
-        var gate = new RequestGate(new SystemGateClock(), RequestGateOptions.Default, sink);
+        var gate = new RequestGate(new SystemGateClock(), RequestGateOptions.Default, sink)
+        {
+            SignedInProvider = () => session.HasValidSession,
+        };
         if (FileAuditSink.ReadDailyCount() is { } saved) gate.SeedDailyCount(saved.Count, saved.Date);
 
         var parser = new LeftTicketParser(stations);
@@ -59,6 +66,8 @@ public static class Composition
         var extension = new ExtensionQueryService(stops, query, gate, stations);
         var settings = new SettingsStore();
 
+        // 会话对象目前只进请求路径；"登录状态可见 + 一键清除"随设置页一起做（TASK-33），
+        // 现在传给 ViewModel 只会多一个没人用的字段。
         return new MainViewModel(stations, query, stops, extension, settings, new QueryBudgetAdapter(gate), text,
             new OfficialLinkProvider());
     }

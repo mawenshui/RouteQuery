@@ -36,10 +36,15 @@ public sealed class OfficialClient : IDisposable
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
     private readonly HttpClient _http;
+    private readonly ProtectedSessionStore? _session;
     private bool _sessionReady;
 
-    public OfficialClient()
+    /// <param name="session">登录态存储。为 null 时应用就是纯游客态（本版默认形态之一）。
+    /// 注意这里传的是<b>存储本身</b>而不是 Cookie 字符串——Cookie 只在发请求的一刻被读出来，
+    /// 不进入任何长驻字段，也不出现在方法签名上（SPEC-007 三.2）。</param>
+    public OfficialClient(ProtectedSessionStore? session = null)
     {
+        _session = session;
         _http = new HttpClient(new HttpClientHandler
         {
             CookieContainer = new CookieContainer(64),
@@ -56,6 +61,9 @@ public sealed class OfficialClient : IDisposable
 
     /// <summary>会话是否已建立。建立一次即可，之后所有查询复用同一容器。</summary>
     public bool HasSession => _sessionReady;
+
+    /// <summary>是否已持有官方登录态。只回答有/无，不返回内容。</summary>
+    public bool HasLoginSession => _session?.HasValidSession ?? false;
 
     /// <summary>余票接口的当前地址。后缀由 <see cref="EndpointResolver"/> 缓存。</summary>
     public string LeftTicketUrl(string pathName) => LeftTicketPath + SafeName(pathName);
@@ -120,7 +128,14 @@ public sealed class OfficialClient : IDisposable
         HttpResponseMessage resp;
         try
         {
-            resp = await _http.GetAsync(url + query, ct).ConfigureAwait(false);
+            // 登录 Cookie 逐次附带，而不是塞进长驻的 CookieContainer：
+            // 用户在设置页点"退出并清除"之后，下一个请求就必须是干净的，
+            // 不能靠"容器里的旧值等官方把它判死"。
+            using var request = new HttpRequestMessage(HttpMethod.Get, url + query);
+            var cookie = _session?.ReadCookieHeaderForRequest();
+            if (!string.IsNullOrEmpty(cookie)) request.Headers.TryAddWithoutValidation("Cookie", cookie);
+
+            resp = await _http.SendAsync(request, ct).ConfigureAwait(false);
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {

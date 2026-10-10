@@ -57,8 +57,19 @@ public sealed class RequestGate(IGateClock clock, RequestGateOptions options, IG
     /// <summary>当日计数属于哪一天。落盘时一起写，换日恢复时用来判断该不该沿用。</summary>
     public DateOnly DailyDate { get { lock (_sync) return _dailyDate; } }
 
-    /// <summary>是否登录态，影响当日额度。</summary>
-    public bool SignedIn { get; set; }
+    /// <summary>登录态的供给方。生产环境接会话存储，这样"用户刚点退出"立刻反映到额度上，
+    /// 不需要谁记得去改一个布尔。</summary>
+    public Func<bool>? SignedInProvider { get; set; }
+
+    private bool _signedIn;
+
+    /// <summary>是否登录态，影响当日额度（登录态更严：风险落在亲友账号上）。
+    /// 设了 <see cref="SignedInProvider"/> 时以它为准；直接赋值留给测试与无会话场景。</summary>
+    public bool SignedIn
+    {
+        get => SignedInProvider?.Invoke() ?? _signedIn;
+        set => _signedIn = value;
+    }
 
     /// <summary>当日额度是否已用尽。</summary>
     public bool DailyBudgetExhausted { get { lock (_sync) return _dailyCount >= DailyCap; } }
