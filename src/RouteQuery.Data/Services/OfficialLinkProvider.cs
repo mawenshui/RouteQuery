@@ -29,7 +29,7 @@ public sealed class OfficialLinkProvider : IOfficialLinkProvider
         OfficialClient.Origin + "/",                      // 站点根
         OfficialClient.Origin + "/otn/",                  // 业务路径：会话 Cookie 的常见挂载点
         OfficialClient.Origin + "/otn/leftTicket/init",   // 我们实际会打开的那一屏
-        OfficialClient.Origin + "/otn/lcQuery/query",     // 中转接口本身要带的那几条
+        OfficialClient.Origin + "/lcquery/",              // 中转接口真正的挂载路径（实测 2026-10-10）
         "https://www.12306.cn/",                          // 登录身份可能落在这个主机上
     ];
 }
