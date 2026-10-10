@@ -21,6 +21,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private readonly ITextProvider _text;
     private readonly IOfficialLinkProvider _links;
     private readonly IOfficialSession _session;
+    private readonly IRouteBook _book;
+    private readonly IQueryHistory _history;
 
     private Station? _from;
     private Station? _to;
@@ -49,7 +51,9 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         IQueryBudget budget,
         ITextProvider text,
         IOfficialLinkProvider links,
-        IOfficialSession session)
+        IOfficialSession session,
+        IRouteBook book,
+        IQueryHistory history)
     {
         _stations = stations;
         _query = query;
@@ -60,6 +64,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         _text = text;
         _links = links;
         _session = session;
+        _book = book;
+        _history = history;
         _statusText = text.Get("状态_空");
         _dailyRemaining = _budget.DailyRemaining;
 
@@ -69,6 +75,9 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         _selectedKind = KindOptions[0];
         _selectedBand = BandOptions[0];
         _selectedSort = SortOptions[0];
+
+        foreach (var r in _book.All) SavedRoutes.Add(r);
+        foreach (var h in _history.All) History.Add(new HistoryRowViewModel(h, _stations, _text));
 
         QueryCommand = new Mvvm.AsyncCommand(QueryAsync);
         LoadStopsCommand = new Mvvm.AsyncCommand(LoadStopsAsync);
@@ -104,6 +113,84 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         }
 
         return Task.CompletedTask;
+    }
+
+    // ── 收藏与历史（FR-16 / FR-17）──────────────────────────
+    public ObservableCollection<SavedRoute> SavedRoutes { get; } = [];
+    public ObservableCollection<HistoryRowViewModel> History { get; } = [];
+
+    /// <summary>收藏/回填的反馈行。它和扩展面板的进度行分开，避免互相盖掉对方的话。</summary>
+    public string BookStatus
+    {
+        get => _bookStatus;
+        private set { if (Set(ref _bookStatus, value)) Raise(nameof(BookStatus)); }
+    }
+
+    private string _bookStatus = string.Empty;
+
+    /// <summary>把当前条件存成收藏。名字用"出发→到达"，够认就行，不做重名编辑。</summary>
+    public void SaveCurrentRoute()
+    {
+        if (_from is not { } f || _to is not { } t)
+        {
+            BookStatus = _text.Get("错误_输入无效");
+            return;
+        }
+
+        BookStatus = _book.Add(new SavedRoute($"{f.Name}→{t.Name}", f.Telecode, t.Telecode))
+            ? string.Format(_text.Get("收藏_已存"), f.Name, t.Name)
+            : _text.Get("收藏_已满");
+        RefreshSaved();
+    }
+
+    public void RemoveSaved(string name)
+    {
+        _book.Remove(name);
+        RefreshSaved();
+    }
+
+    /// <summary>点收藏只回填条件，<b>不自动查询</b>——日期必须由用户重新确认（FR-16）。</summary>
+    public void ApplySaved(SavedRoute route)
+    {
+        if (_stations.FindByTelecode(route.FromTelecode) is not { } f ||
+            _stations.FindByTelecode(route.ToTelecode) is not { } t)
+        {
+            // 三字码在码表里找不到，多半是码表换版了。这时宁可说明，也不回填一个错的站名。
+            BookStatus = _text.Get("收藏_站已不在");
+            return;
+        }
+
+        PickFrom(f);
+        PickTo(t);
+        BookStatus = _text.Get("收藏_已回填");
+    }
+
+    public void ApplyHistory(HistoryRowViewModel row)
+    {
+        if (_stations.FindByTelecode(row.FromTelecode) is not { } f ||
+            _stations.FindByTelecode(row.ToTelecode) is not { } t)
+        {
+            BookStatus = _text.Get("收藏_站已不在");
+            return;
+        }
+
+        PickFrom(f);
+        PickTo(t);
+        TravelDate = row.TravelDate;
+        BookStatus = _text.Get("历史_已回填");
+    }
+
+    public void ClearHistory()
+    {
+        _history.Clear();
+        History.Clear();
+        BookStatus = _text.Get("历史_已清空");
+    }
+
+    private void RefreshSaved()
+    {
+        SavedRoutes.Clear();
+        foreach (var r in _book.All) SavedRoutes.Add(r);
     }
 
     // ── 登录态（FR-24 / FR-25）──────────────────────────────
@@ -496,6 +583,13 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
 
             Raw = journeys;
             DailyRemaining = _budget.DailyRemaining;
+
+            // 出错时不记历史：一次失败的查询不该占掉一条位置，也不该被误当成"查过了"。
+            // 存进文件与加进列表用同一个 entry 对象，避免两处时间戳不一致。
+            var entry = new QueryHistoryEntry(request.From.Telecode, request.To.Telecode, request.TravelDate, journeys.Count, DateTimeOffset.Now);
+            _history.Record(entry);
+            History.Insert(0, new HistoryRowViewModel(entry, _stations, _text));
+            while (History.Count > IQueryHistory.MaxEntries) History.RemoveAt(History.Count - 1);
 
             if (journeys.Count == 0)
             {

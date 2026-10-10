@@ -35,6 +35,22 @@ public partial class MainWindow : Window
 
     private void Logout_Click(object sender, RoutedEventArgs e) => Vm.ClearSession();
 
+    // ── 侧栏：收藏与历史（FR-16 / FR-17）────────────────────
+    private void SaveRoute_Click(object sender, RoutedEventArgs e) => Vm.SaveCurrentRoute();
+
+    private void ClearHistory_Click(object sender, RoutedEventArgs e) => Vm.ClearHistory();
+
+    /// <summary>双击即回填条件。回填<b>不自动查询</b>：日期必须由用户重新确认（FR-16）。</summary>
+    private void Saved_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBox { SelectedItem: Core.Ports.SavedRoute route }) Vm.ApplySaved(route);
+    }
+
+    private void History_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBox { SelectedItem: ViewModels.HistoryRowViewModel row }) Vm.ApplyHistory(row);
+    }
+
     private void QuickDate_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: string tag } && int.TryParse(tag, out var offset)) Vm.QuickDate(offset);

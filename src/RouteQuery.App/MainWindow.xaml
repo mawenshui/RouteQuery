@@ -26,12 +26,59 @@
     </Window.Resources>
 
     <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="210"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+    <Grid Grid.Column="0" Margin="0,0,12,0">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>   <!-- 查询栏 -->
-            <RowDefinition Height="Auto"/>   <!-- 筛选栏 -->
-            <RowDefinition Height="*"/>      <!-- 结果 -->
-            <RowDefinition Height="Auto"/>   <!-- 详情面板 -->
-            <RowDefinition Height="Auto"/>   <!-- 状态栏 -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left" Text="{DynamicResource 侧栏_收藏}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_收藏本次}" Padding="8,2"
+                    Click="SaveRoute_Click"/>
+        </DockPanel>
+        <ListBox Grid.Row="1" x:Name="SavedList" Margin="0,6,0,0"
+                 ItemsSource="{Binding SavedRoutes}" DisplayMemberPath="Name"
+                 MouseDoubleClick="Saved_DoubleClick"/>
+
+        <DockPanel Grid.Row="2" LastChildFill="False" Margin="0,14,0,0">
+            <TextBlock DockPanel.Dock="Left" Text="{DynamicResource 侧栏_历史}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_清空历史}" Padding="8,2"
+                    Click="ClearHistory_Click"/>
+        </DockPanel>
+        <ListBox Grid.Row="3" x:Name="HistoryList" Margin="0,6,0,0"
+                 ItemsSource="{Binding History}" MouseDoubleClick="History_DoubleClick">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel>
+                        <TextBlock Text="{Binding RouteText}"/>
+                        <TextBlock Text="{Binding WhenText}" FontSize="11" Style="{StaticResource HintText}"/>
+                        <TextBlock Text="{Binding CountText}" FontSize="11" Style="{StaticResource HintText}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- 收藏/回填的反馈：只有几行字，但它必须出现在动作发生的地方，而不是跑到状态栏去 -->
+        <TextBlock Grid.Row="4" Margin="0,8,0,0" Text="{Binding BookStatus}" TextWrapping="Wrap"
+                   FontSize="11" Style="{StaticResource HintText}"/>
+    </Grid>
+
+    <Grid Grid.Column="1">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- ══ 查询栏 ══ -->
@@ -332,5 +379,6 @@
                        Text="{Binding StatusText}"/>
             <TextBlock DockPanel.Dock="Right" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"/>
         </DockPanel>
+    </Grid>
     </Grid>
 </Window>

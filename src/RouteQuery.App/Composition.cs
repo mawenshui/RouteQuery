@@ -75,7 +75,8 @@ public static class Composition
         // 会话对象目前只进请求路径；"登录状态可见 + 一键清除"随设置页一起做（TASK-33），
         // 现在传给 ViewModel 只会多一个没人用的字段。
         return new MainViewModel(stations, query, stops, extension, settings, new QueryBudgetAdapter(gate), text,
-            new OfficialLinkProvider(), session);
+            new OfficialLinkProvider(), session,
+            new JsonRouteBook(), new JsonQueryHistory());
     }
 
     /// <summary>版本号的唯一来源是 csproj 的 <c>&lt;Version&gt;</c>（SPEC-006 一）。

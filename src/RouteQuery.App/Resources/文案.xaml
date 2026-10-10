@@ -112,6 +112,20 @@
     <sys:String x:Key="详情_发时">发时</sys:String>
     <sys:String x:Key="详情_停留">停留</sys:String>
 
+    <sys:String x:Key="侧栏_收藏">常用线路</sys:String>
+    <sys:String x:Key="侧栏_历史">最近查询</sys:String>
+    <sys:String x:Key="按钮_收藏本次">收藏这一程</sys:String>
+    <sys:String x:Key="按钮_删除收藏">删除</sys:String>
+    <sys:String x:Key="按钮_清空历史">清空历史</sys:String>
+    <sys:String x:Key="收藏_已存">已收藏 {0}→{1}。</sys:String>
+    <sys:String x:Key="收藏_已满">收藏已满 20 条。先删掉一条不常用的再存。</sys:String>
+    <sys:String x:Key="收藏_已回填">条件已填好。日期要自己确认一下，然后点查询。</sys:String>
+    <sys:String x:Key="收藏_站已不在">这条记录里的车站不在当前站点表里了（多半是站点表换版）。到官方查一下这个站现在的名字。</sys:String>
+    <sys:String x:Key="历史_已回填">条件与日期已填回。点查询重新取一次最新余票。</sys:String>
+    <sys:String x:Key="历史_已清空">历史已清空，本机文件里也删掉了。</sys:String>
+    <sys:String x:Key="历史_结果数">{0} 趟</sys:String>
+    <sys:String x:Key="历史_未知站">未知车站</sys:String>
+
     <sys:String x:Key="跳转_提示">到 12306 查询页后请手动输入：{0} → {1}，日期 {2}。</sys:String>
     <sys:String x:Key="跳转_未选">先在列表里选中一趟车，再点到 12306 查看。</sys:String>
     <sys:String x:Key="跳转_失败">没能叫出你的默认浏览器。请自己打开 12306 网站查询。</sys:String>
