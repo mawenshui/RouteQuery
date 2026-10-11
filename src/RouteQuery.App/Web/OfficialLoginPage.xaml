@@ -10,7 +10,7 @@
     <DockPanel>
         <!-- 顶部常驻说明：这一屏的唯一用途是让用户本人在官方页面里登录。
              这句话必须一直在，而不是只在第一次弹出来——用户中途切回来时会忘了自己在哪。 -->
-        <Border DockPanel.Dock="Top" Background="#FFF4E5" Padding="12,10">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource 笔刷_提醒底}" Padding="12,10">
             <StackPanel>
                 <TextBlock Text="{DynamicResource 登录_提示}" TextWrapping="Wrap" />
                 <Grid Margin="0,8,0,0">
@@ -29,13 +29,13 @@
                             Click="OpenInBrowser_Click"/>
                 </Grid>
                 <!-- 采集结果只说条数，不说内容 -->
-                <TextBlock x:Name="StatusLine" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#1B6B3A"/>
+                <TextBlock x:Name="StatusLine" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource 笔刷_成功}"/>
             </StackPanel>
         </Border>
 
         <!-- 非官方域名被拦下时的红条。刻意不"悄悄回到上一页"：用户必须知道自己刚才那次跳转没走成。 -->
-        <Border x:Name="BlockedBar" DockPanel.Dock="Top" Background="#B3261E" Padding="12,8" Visibility="Collapsed">
-            <TextBlock x:Name="BlockedText" Foreground="White" TextWrapping="Wrap"/>
+        <Border x:Name="BlockedBar" DockPanel.Dock="Top" Background="{DynamicResource 笔刷_错误底}" Padding="12,8" Visibility="Collapsed">
+            <TextBlock x:Name="BlockedText" Foreground="{DynamicResource 笔刷_底上文字}" TextWrapping="Wrap"/>
         </Border>
 
         <!-- 运行时缺失时替换 WebView2 的说明区 -->

@@ -7,7 +7,7 @@
         Width="1280" Height="800" MinWidth="1080" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13"
-        Background="#FAFAFA"
+        Background="{DynamicResource 笔刷_窗口底}"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         mc:Ignorable="d"
@@ -17,13 +17,8 @@
         <conv:ViewStateToVisibilityConverter x:Key="StateVis"/>
         <conv:BoolToVisibilityConverter x:Key="BoolVis"/>
         <conv:CountToBoolConverter x:Key="CountBool"/>
-        <conv:HasTicketToBrushConverter x:Key="TicketBrush"/>
-
-        <Style x:Key="HintText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#8A8A8A"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-    </Window.Resources>
+        
+            </Window.Resources>
 
     <Grid Margin="16">
         <Grid.ColumnDefinitions>
@@ -172,7 +167,7 @@
         </StackPanel>
 
         <!-- ══ 结果区 ══ -->
-        <TabControl Grid.Row="2" Background="Transparent" BorderBrush="#E0E0E0">
+        <TabControl Grid.Row="2" Background="Transparent" BorderBrush="{DynamicResource 笔刷_边框}">
             <TabItem Header="{DynamicResource 页签_直达}">
                 <Grid>
                     <TextBlock Text="{DynamicResource 状态_空}" TextWrapping="Wrap" Margin="24"
@@ -190,7 +185,7 @@
                     <!-- 出错：文案本身已含"下一步做什么"，重试按钮只在可重试类错误出现（SPEC-007 三.7） -->
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="620"
                                 Visibility="{Binding State, Converter={StaticResource StateVis}, ConverterParameter=Error}">
-                        <TextBlock Text="{Binding ErrorText}" TextWrapping="Wrap" Foreground="#B3261E"
+                        <TextBlock Text="{Binding ErrorText}" TextWrapping="Wrap" Foreground="{DynamicResource 笔刷_错误}"
                                    FontSize="14" TextAlignment="Center"/>
                         <Button Content="{DynamicResource 按钮_重试}" Margin="0,12,0,0" Padding="14,5"
                                 HorizontalAlignment="Center"
@@ -225,7 +220,7 @@
 
                                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                                         <TextBlock Text="{Binding TrainCode}" FontWeight="Bold" FontSize="14"/>
-                                        <Border Background="#F0F0F0" CornerRadius="3" Padding="4,0" Margin="6,0,0,0">
+                                        <Border Background="{DynamicResource 笔刷_徽标底}" CornerRadius="3" Padding="4,0" Margin="6,0,0,0">
                                             <TextBlock Text="{Binding KindLabel}" FontSize="11"/>
                                         </Border>
                                     </StackPanel>
@@ -234,12 +229,12 @@
                                         <Run Text="{Binding DepartureText, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding FromName, Mode=OneWay}"/>
                                     </TextBlock>
                                     <TextBlock Grid.Column="2" VerticalAlignment="Center">
-                                        <Run Text="{Binding ArrivalText, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding ToName, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding ArrivalDayNote, Mode=OneWay}" Foreground="#B3261E"/>
+                                        <Run Text="{Binding ArrivalText, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding ToName, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding ArrivalDayNote, Mode=OneWay}" Foreground="{DynamicResource 笔刷_错误}"/>
                                     </TextBlock>
                                     <TextBlock Grid.Column="3" Text="{Binding DurationText}" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="4" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding SeatSummary}"
-                                                   Foreground="{Binding HasTicket, Converter={StaticResource TicketBrush}}"
+                                                   Style="{StaticResource 席别文字}"
                                                    TextTrimming="CharacterEllipsis"/>
                                         <TextBlock Text="{Binding OnSaleText}" FontSize="11"
                                                    Style="{StaticResource HintText}"
@@ -308,7 +303,7 @@
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="{Binding TrainsText}" FontWeight="Bold" FontSize="14"/>
                                             <TextBlock FontSize="11" Style="{StaticResource HintText}">
-                                                <Run Text="{Binding TimesText, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding ArrivalDayNote, Mode=OneWay}" Foreground="#B3261E"/>
+                                                <Run Text="{Binding TimesText, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding ArrivalDayNote, Mode=OneWay}" Foreground="{DynamicResource 笔刷_错误}"/>
                                             </TextBlock>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
@@ -327,7 +322,7 @@
                                             </StackPanel>
                                         </StackPanel>
                                         <TextBlock Grid.Column="4" Text="{Binding PriceText}" VerticalAlignment="Center"
-                                                   Foreground="#B3541E" FontSize="11" TextWrapping="Wrap"/>
+                                                   Foreground="{DynamicResource 笔刷_有票}" FontSize="11" TextWrapping="Wrap"/>
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
@@ -420,10 +415,10 @@
                                                 <Style TargetType="TextBlock">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsAnomalous}" Value="True">
-                                                            <Setter Property="Foreground" Value="#B3261E"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource 笔刷_错误}"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding IsBuyable}" Value="True">
-                                                            <Setter Property="Foreground" Value="#1B6B3A"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource 笔刷_成功}"/>
                                                             <Setter Property="FontWeight" Value="Bold"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
@@ -452,7 +447,7 @@
             <!-- 新版本提示（FR-36）：弱到不改变阅读顺序，点一下交给系统浏览器打开发布页。
                  没有新版本时这个位置是空的，不占位也不解释。 -->
             <Button DockPanel.Dock="Right" Content="{Binding UpdateNote}" Padding="10,2" Margin="12,0,0,0"
-                    FontSize="11" Foreground="#1B6B3A" Background="Transparent" BorderThickness="0"
+                    FontSize="11" Foreground="{DynamicResource 笔刷_成功}" Background="Transparent" BorderThickness="0"
                     Click="OpenRelease_Click"
                     Visibility="{Binding HasUpdateNote, Converter={StaticResource BoolVis}}"/>
             <TextBlock DockPanel.Dock="Right" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"/>

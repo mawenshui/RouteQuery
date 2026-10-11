@@ -1,5 +1,6 @@
 using System.Windows;
 using RouteQuery.App.ViewModels;
+using RouteQuery.Core.Ports;
 
 namespace RouteQuery.App.Web;
 
@@ -26,6 +27,20 @@ public partial class SettingsWindow : Window
     }
 
     private void Logout_Click(object sender, RoutedEventArgs e) => Vm.ClearSession();
+
+    /// <summary>
+    /// 切换主题（FR-35）。勾选是只读显示，写档位与换色板都走这一条路径；
+    /// 换 <c>MergedDictionaries</c> 是 WPF 动作，所以放在这里而不是视图模型里。
+    /// </summary>
+    private void Theme_Changed(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.RadioButton { Tag: string tag } ||
+            !Enum.TryParse<ThemeChoice>(tag, out var choice))
+            return;
+
+        Vm.Theme = choice;
+        Theme.ThemeManager.Apply(choice);
+    }
 
     /// <summary>清空本机数据必须二次确认（FR-22 验收）。措辞里明确"不能撤销"。</summary>
     private void ClearAll_Click(object sender, RoutedEventArgs e)

@@ -22,6 +22,10 @@ public partial class App : Application
         };
 
         var settings = Composition.BuildSettings();
+
+        // 主题要在第一个窗口出现之前定下来（FR-35）。否则首次声明框会先以浅色闪一下。
+        Theme.ThemeManager.Apply(settings.Load().Theme);
+
         if (!AcknowledgeDisclaimer(settings))
         {
             // 不接受声明就不进入主界面。这是 P0 约束，不给"以后再说"的口子。

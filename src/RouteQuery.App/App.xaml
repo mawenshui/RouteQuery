@@ -7,6 +7,10 @@
             <ResourceDictionary.MergedDictionaries>
                 <!-- 文案集中在此，界面与代码里不出现硬编码提示语（SPEC-004 五.5） -->
                 <ResourceDictionary Source="Resources/文案.xaml"/>
+                <!-- 样式引用色板键，本身不含色值（FR-35）；先并一份浅色作起点，
+                     启动时 ThemeManager 按设置档位把它换成实际生效的那一份 -->
+                <ResourceDictionary Source="Resources/主题.xaml"/>
+                <ResourceDictionary Source="Resources/浅色.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

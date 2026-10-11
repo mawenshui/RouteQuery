@@ -307,6 +307,20 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     }
 
     /// <summary>
+    /// 主题档位（FR-35）。这里只负责**存**，换字典的动作在设置窗口的代码后置里做——
+    /// 视图模型不许引用 WPF（SPEC-004 五.1），而换 <c>MergedDictionaries</c> 恰恰是 WPF 的动作。
+    /// </summary>
+    public ThemeChoice Theme
+    {
+        get => _settings.Load().Theme;
+        set
+        {
+            _settings.Save(_settings.Load() with { Theme = value });
+            Raise(nameof(Theme));
+        }
+    }
+
+    /// <summary>
     /// 取一次最新版本号并比较。<b>整个过程不允许产生任何用户可见的失败</b>：
     /// 取不到就什么都不做（连"检查失败"都不说），取到但没有更新也不说——
     /// 需求把这条列为硬性要求，因为"检查更新失败"在亲友眼里会被读成"应用坏了"（FR-36 失败处理）。

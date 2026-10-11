@@ -1,0 +1,26 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     浅色色板（FR-35）。界面只引用键名，不出现色值。
+     值取自改造前的实际显示，唯一刻意改变的是次级文字：#8A8A8A 在白底上约 3.5:1，
+     125% 缩放下小字已经发灰，这里提到 #6A6A6A（约 4.9:1，过 AA）。
+     ═══════════════════════════════════════════════════════════════ -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="笔刷_窗口底">#FAFAFA</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_内容底">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_徽标底">#F0F0F0</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_边框">#E0E0E0</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_提醒底">#FFF4E5</SolidColorBrush>
+
+    <SolidColorBrush x:Key="笔刷_文字">#1F1F1F</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_次级文字">#6A6A6A</SolidColorBrush>
+
+    <!-- 有票的高亮色（改造前就是这个橙）；三态另外都有文字，颜色只是第二通道（NFR-06） -->
+    <SolidColorBrush x:Key="笔刷_有票">#B3541E</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_成功">#1B6B3A</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_错误">#B3261E</SolidColorBrush>
+    <!-- 红底白字那条横幅：底和字要成对给，深色下若沿用 #FF8A80 当底，白字对比只剩约 2.3:1 -->
+    <SolidColorBrush x:Key="笔刷_错误底">#B3261E</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_底上文字">#FFFFFF</SolidColorBrush>
+
+</ResourceDictionary>

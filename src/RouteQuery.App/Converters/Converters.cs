@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Media;
 
 namespace RouteQuery.App.Converters;
 
@@ -42,22 +41,15 @@ public sealed class CountToBoolConverter : IValueConverter
         throw new NotSupportedException("单向转换器");
 }
 
-/// <summary>有票/无票两种行的前景色。注意界面始终同时带文字（"有"/"候补"），
-/// 颜色只是加强，不作为唯一信息载体（NFR-06）。</summary>
-public sealed class HasTicketToBrushConverter : IValueConverter
+/// <summary>
+/// "当前档位 == 这一项" → 勾选状态（FR-35 主题单选）。
+/// 绑定写成 <c>Mode=OneWay</c>，勾选只负责显示，写回与换色都由代码后置那一条路径做——
+/// 同一个状态有两条提交路径就会互相覆盖（DEC-17 踩过的坑，这里不再开第二条）。
+/// </summary>
+public sealed class OptionEqualsConverter : IValueConverter
 {
-    private static readonly Brush HasTicket = Frozen(Color.FromRgb(0xB3, 0x54, 0x1E));
-    private static readonly Brush SoldOut = Frozen(Color.FromRgb(0x8A, 0x8A, 0x8A));
-
-    private static Brush Frozen(Color color)
-    {
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
-        return brush;
-    }
-
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is true ? HasTicket : SoldOut;
+        Equals(value?.ToString(), parameter?.ToString());
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException("单向转换器");

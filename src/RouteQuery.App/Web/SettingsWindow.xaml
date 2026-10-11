@@ -9,11 +9,7 @@
 
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolVis"/>
-        <Style x:Key="Hint" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#8A8A8A"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
+        <conv:OptionEqualsConverter x:Key="选项相等"/>
     </Window.Resources>
 
     <DockPanel Margin="16">
@@ -38,7 +34,7 @@
                         <Run Text="{DynamicResource 提示_站点数据}"/><Run Text=" "/>
                         <Run Text="{Binding StationDataDate, Mode=OneWay}" FontWeight="SemiBold"/>
                     </TextBlock>
-                    <TextBlock Margin="0,6,0,0" Foreground="#B3541E" TextWrapping="Wrap"
+                    <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource 笔刷_有票}" TextWrapping="Wrap"
                                Visibility="{Binding StationDataStale, Converter={StaticResource BoolVis}}">
                         <Run Text="{Binding StationDataAgeDays, Mode=OneWay}"/><Run Text=" "/><Run Text="{DynamicResource 设置_码表过期}"/>
                     </TextBlock>
@@ -59,11 +55,26 @@
                 </StackPanel>
             </GroupBox>
 
+            <GroupBox Header="{DynamicResource 设置_主题区}" Padding="10" Margin="0,12,0,0">
+                <!-- 三档单选。FR-35 要求"即时生效"，所以选中即换色板、即落盘，没有"应用"按钮 -->
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Content="{DynamicResource 主题_跟随系统}" Margin="0,0,16,0"
+                                 GroupName="主题" Tag="FollowSystem" Checked="Theme_Changed"
+                                 IsChecked="{Binding Theme, Converter={StaticResource 选项相等}, ConverterParameter=FollowSystem, Mode=OneWay}"/>
+                    <RadioButton Content="{DynamicResource 主题_浅色}" Margin="0,0,16,0"
+                                 GroupName="主题" Tag="Light" Checked="Theme_Changed"
+                                 IsChecked="{Binding Theme, Converter={StaticResource 选项相等}, ConverterParameter=Light, Mode=OneWay}"/>
+                    <RadioButton Content="{DynamicResource 主题_深色}" GroupName="主题" Tag="Dark"
+                                 Checked="Theme_Changed"
+                                 IsChecked="{Binding Theme, Converter={StaticResource 选项相等}, ConverterParameter=Dark, Mode=OneWay}"/>
+                </StackPanel>
+            </GroupBox>
+
             <GroupBox Header="{DynamicResource 设置_更新区}" Padding="10" Margin="0,12,0,0">
                 <!-- SPEC-007 六.1 允许 GitHub 版本检查这个例外，条件之一是"必须可关闭"。
                      勾掉立即落盘，本次运行也不再提示——所以它不是一个只影响下次的装饰开关。 -->
                 <CheckBox Content="{DynamicResource 设置_检查更新}" IsChecked="{Binding CheckUpdatesEnabled}"
-                          FontSize="12" Foreground="#4A4A4A"/>
+                          FontSize="12"/>
             </GroupBox>
 
             <GroupBox Header="{DynamicResource 设置_数据区}" Padding="10" Margin="0,12,0,0">
@@ -72,7 +83,7 @@
                     <Button Content="{DynamicResource 设置_清空}" HorizontalAlignment="Left" Padding="12,4"
                             Margin="0,8,0,0" Click="ClearAll_Click"/>
                     <TextBlock Margin="0,8,0,0" Text="{Binding BookStatus}" TextWrapping="Wrap"
-                               Foreground="#1B6B3A"/>
+                               Foreground="{DynamicResource 笔刷_成功}"/>
                 </StackPanel>
             </GroupBox>
 

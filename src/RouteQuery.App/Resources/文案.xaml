@@ -118,6 +118,10 @@
     <sys:String x:Key="更新_有新版本">发现新版本 {0}（当前 {1}）</sys:String>
     <sys:String x:Key="设置_检查更新">启动时检查一次新版本（只向 GitHub 问一次版本号，不带任何你的信息；关掉后完全不出站）</sys:String>
     <sys:String x:Key="设置_更新区">更新</sys:String>
+    <sys:String x:Key="设置_主题区">主题</sys:String>
+    <sys:String x:Key="主题_跟随系统">跟随系统</sys:String>
+    <sys:String x:Key="主题_浅色">浅色</sys:String>
+    <sys:String x:Key="主题_深色">深色</sys:String>
 
     <sys:String x:Key="侧栏_收藏">常用线路</sys:String>
     <sys:String x:Key="侧栏_历史">最近查询</sys:String>
