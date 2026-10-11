@@ -71,7 +71,6 @@
     <sys:String x:Key="扩展_上限">最多扩展站数</sys:String>
     <sys:String x:Key="扩展_预估">预计约 {0} 秒，共 {1} 个方案要查</sys:String>
     <sys:String x:Key="扩展_进度">已完成 {0} / {1}</sys:String>
-    <sys:String x:Key="扩展_剩余额度">今日还可查询 {0} 次</sys:String>
     <sys:String x:Key="扩展_未查完">还有 {0} 个候选没查到，可继续下一批</sys:String>
     <sys:String x:Key="扩展_不可售">这趟车在该区间不售</sys:String>
     <sys:String x:Key="扩展_无法计算">无法计算</sys:String>
@@ -119,6 +118,7 @@
     <sys:String x:Key="按钮_清空历史">清空历史</sys:String>
     <sys:String x:Key="收藏_已存">已收藏 {0}→{1}。</sys:String>
     <sys:String x:Key="收藏_已满">收藏已满 20 条。先删掉一条不常用的再存。</sys:String>
+    <sys:String x:Key="收藏_已删除">已删除收藏：{0}。</sys:String>
     <sys:String x:Key="收藏_已回填">条件已填好。日期要自己确认一下，然后点查询。</sys:String>
     <sys:String x:Key="收藏_站已不在">这条记录里的车站不在当前站点表里了（多半是站点表换版）。到官方查一下这个站现在的名字。</sys:String>
     <sys:String x:Key="历史_已回填">条件与日期已填回。点查询重新取一次最新余票。</sys:String>
@@ -172,14 +172,11 @@
     <sys:String x:Key="中转_查询">查换乘方案</sys:String>
     <sys:String x:Key="中转_全程">全程 {0}</sys:String>
     <sys:String x:Key="中转_换乘">候车 {0}</sys:String>
-    <sys:String x:Key="中转_同站">·同站换乘</sys:String>
-    <sys:String x:Key="中转_异站">·需换车站</sys:String>
-    <sys:String x:Key="中转_需出站">·需出站再进站</sys:String>
     <sys:String x:Key="中转_次日">次日</sys:String>
+    <sys:String x:Key="中转_多日后">{0}天后</sys:String>
     <sys:String x:Key="中转_无票价">票价官方未给出</sys:String>
     <sys:String x:Key="中转_段一">第一段</sys:String>
     <sys:String x:Key="中转_段二">第二段</sys:String>
     <sys:String x:Key="中转_说明">换乘方案与余票都来自官方接续换乘接口。官方在这个接口里不给票价，所以这里只比时间与余票，不比价格；实际票价以下单时 12306 显示为准。</sys:String>
-    <sys:String x:Key="中转_本版未做">官方换乘方案的取数与解析还没完成：登录已经可用，但官方在登录态下返回的换乘数据结构尚未实测过一次。没有实测样本就写解析等于猜数据，所以这一格现在说明原因而不是给结果。</sys:String>
 
 </ResourceDictionary>

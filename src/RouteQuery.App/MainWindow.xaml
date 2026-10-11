@@ -46,8 +46,19 @@
                     Click="SaveRoute_Click"/>
         </DockPanel>
         <ListBox Grid.Row="1" x:Name="SavedList" Margin="0,6,0,0"
-                 ItemsSource="{Binding SavedRoutes}" DisplayMemberPath="Name"
-                 MouseDoubleClick="Saved_DoubleClick"/>
+                 ItemsSource="{Binding SavedRoutes}" MouseDoubleClick="Saved_DoubleClick">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <!-- 删除必须就在这一行上：收藏满 20 条时的提示让用户"先删一条"，
+                         没有入口的话那句话就是一句做不到的指示。 -->
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_删除收藏}"
+                                FontSize="11" Padding="6,0" Click="RemoveSaved_Click"/>
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
 
         <DockPanel Grid.Row="2" LastChildFill="False" Margin="0,14,0,0">
             <TextBlock DockPanel.Dock="Left" Text="{DynamicResource 侧栏_历史}" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -290,7 +301,9 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="{Binding TrainsText}" FontWeight="Bold" FontSize="14"/>
-                                            <TextBlock Text="{Binding TimesText}" FontSize="11" Style="{StaticResource HintText}"/>
+                                            <TextBlock FontSize="11" Style="{StaticResource HintText}">
+                                                <Run Text="{Binding TimesText, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding ArrivalDayNote, Mode=OneWay}" Foreground="#B3261E"/>
+                                            </TextBlock>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{Binding RouteText}"/>

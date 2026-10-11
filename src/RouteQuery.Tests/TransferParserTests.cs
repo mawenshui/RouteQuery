@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using RouteQuery.Core.Errors;
 using RouteQuery.Core.Model;
+using RouteQuery.App.ViewModels;
+using RouteQuery.Core.Ports;
 using RouteQuery.Data.Parsing;
 
 namespace RouteQuery.Tests;
@@ -55,7 +58,7 @@ public class TransferParserTests
         Assert.Equal(TimeSpan.FromMinutes(258), p.TotalDuration);
         Assert.Equal("4小时18分钟", p.TotalDurationText);   // 官方原文，界面直接用它
         Assert.Equal(new DateOnly(2026, 10, 11), p.TravelDate);
-        Assert.False(p.ArrivesNextDay);
+        Assert.Equal(0, p.ArrivalDayOffset);
     }
 
     [Fact]
@@ -133,6 +136,108 @@ public class TransferParserTests
         var r = Parse(json.ToJsonString());
         Assert.Equal(9, r.Plans.Count);
         Assert.Equal(1, r.DroppedForShape);
+    }
+
+    [Fact]
+    public void 界面时间必须是24小时制()
+    {
+        // 这一条是肉眼看出来的：G25 实际 17:00 出发，界面写成 05:00。
+        // TimeOnly 的 "hh" 是 12 小时制且不带 AM/PM，把下午读成凌晨是会把人误上错车的错。
+        var plan = Parse(Samples.Json(Sample)).Plans[0];
+        var row = new TransferRowViewModel(plan, new KeyAsIsText());
+
+        Assert.Equal("17:00 出发 · 21:18 到达", row.TimesText);
+    }
+
+    [Fact]
+    public void 语义未确认的字段不得变成界面上的断言()
+    {
+        // same_station / isOutStation 在 10 份样本里恒为 "0"，而 same_train 是 "Y"（同一趟车继续坐，
+        // 显然不需要换站）。含义没确定之前，界面不许说"需换车站/需出站"。
+        var row = new TransferRowViewModel(Parse(Samples.Json(Sample)).Plans[0], new KeyAsIsText());
+
+        Assert.DoesNotContain("中转_异站", row.TransferText);
+        Assert.DoesNotContain("中转_需出站", row.TransferText);
+        Assert.Contains("中转_换乘", row.TransferText);
+    }
+
+    /// <summary>只回键名本身：断言"用了哪条文案"而不是"文案内容对不对"，后者归界面走查。</summary>
+    private sealed class KeyAsIsText : ITextProvider
+    {
+        public string Get(string key) => key;
+    }
+
+    [Fact]
+    public void 时刻字段形态变了判解析失败而不是退化成凌晨零点()
+    {
+        // 旧写法是 TimeOnly.Parse 裸解：官方一旦把时刻写成空串或全角冒号，
+        // 要么抛原始 FormatException（用户看到的是一句看不懂的话），要么解成 00:00（把人送到凌晨的站台）。
+        var json = Mutate(list => list[0]!["fullList"]!.AsArray()[0]!["start_time"] = "17：00");
+
+        var ex = Assert.Throws<QueryException>(() => Parse(json));
+
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+        Assert.Contains("start_time", ex.Message);
+    }
+
+    [Fact]
+    public void 历时字段写成中文时判解析失败而不是当成零分钟()
+    {
+        // 这个漂移不是假设：同一个响应的 all_lishi 就是"4小时18分钟"这种中文，
+        // 只有 lishi 是 hh:mm。官方哪天把两段也改成中文，我们必须停下来报错，不能显示"历时 0 分钟"。
+        var json = Mutate(list => list[0]!["fullList"]!.AsArray()[0]!["lishi"] = "3小时14分");
+
+        var ex = Assert.Throws<QueryException>(() => Parse(json));
+
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+        Assert.Contains("lishi", ex.Message);
+    }
+
+    [Fact]
+    public void 数值字段解不出时不得当成0分钟()
+    {
+        // "候车 0分钟""全程 0分钟"是凭空造出来的数，而且长得像真数据（NFR-18）。
+        var json = Mutate(list => list[0]!["wait_time_minutes"] = "无");
+
+        var ex = Assert.Throws<QueryException>(() => Parse(json));
+
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+        Assert.Contains("wait_time_minutes", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(0, "")]              // 当天到：不标注
+    [InlineData(1, "中转_次日")]       // 次日
+    [InlineData(2, "中转_多日后")]     // 跨两天以上不许糊成"次日"
+    public void 跨日标注必须跟官方给的两个日期相减结果一致(int dayOffset, string expectedKey)
+    {
+        var json = Mutate(list =>
+            list[0]!["arrive_date"] = DateOnly.Parse(list[0]!["train_date"]!.GetValue<string>(), CultureInfo.InvariantCulture)
+                .AddDays(dayOffset).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+
+        var row = new TransferRowViewModel(Parse(json).Plans[0], new KeyAsIsText());
+
+        Assert.Equal(expectedKey, row.ArrivalDayNote);
+    }
+
+    [Fact]
+    public void 官方日期互相矛盾的方案丢弃并计入丢弃数()
+    {
+        // arrive_date 早于 train_date：第几天到达无从确定，宁可少一条并说明，也不能显示成"当天到"。
+        var json = Mutate(list => list[0]!["arrive_date"] = "2020-01-01");
+
+        var r = Parse(json);
+
+        Assert.Equal(9, r.Plans.Count);
+        Assert.Equal(1, r.DroppedForShape);
+    }
+
+    /// <summary>改样本的一处再整体解析：拿"官方改成这样我们会怎么表现"来验证失败路径。</summary>
+    private static string Mutate(Action<JsonArray> mutate)
+    {
+        var root = JsonNode.Parse(Samples.Json(Sample))!.AsObject();
+        mutate(root["data"]!["middleList"]!.AsArray());
+        return root.ToJsonString();
     }
 
     [Fact]

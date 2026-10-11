@@ -43,6 +43,12 @@ public partial class MainWindow : Window
 
     private void ClearHistory_Click(object sender, RoutedEventArgs e) => Vm.ClearHistory();
 
+    /// <summary>删除这一条收藏。删完必须把"删了哪条"说出来——侧栏里没有别的反馈位置。</summary>
+    private void RemoveSaved_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: Core.Ports.SavedRoute route }) Vm.RemoveSaved(route.Name);
+    }
+
     /// <summary>双击即回填条件。回填<b>不自动查询</b>：日期必须由用户重新确认（FR-16）。</summary>
     private void Saved_DoubleClick(object sender, MouseButtonEventArgs e)
     {

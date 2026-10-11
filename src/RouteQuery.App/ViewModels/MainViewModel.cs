@@ -144,6 +144,9 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     /// <summary>版本号。唯一来源是 csproj（SPEC-006 一），界面与日志都读这里。</summary>
     public string AppVersion => Composition.Version;
 
+    /// <summary>关于页那一行。设置窗口绑的是这个，不是 <see cref="AppVersion"/>。</summary>
+    public string AboutVersionText => string.Format(_text.Get("关于_版本"), AppVersion);
+
     /// <summary>把当前条件存成收藏。名字用"出发→到达"，够认就行，不做重名编辑。</summary>
     public void SaveCurrentRoute()
     {
@@ -159,9 +162,12 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         RefreshSaved();
     }
 
+    /// <summary>删掉一条收藏。FR-16 的验收里有"删除一条不影响其余顺序"，
+    /// 而删除的入口必须在收藏那一行上——只在提示里说"先删一条"却给不出按钮，等于没做这个功能。</summary>
     public void RemoveSaved(string name)
     {
         _book.Remove(name);
+        BookStatus = string.Format(_text.Get("收藏_已删除"), name);
         RefreshSaved();
     }
 
@@ -862,6 +868,12 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
 
             if (batch.StopReason == ExtensionStopReason.AbortedByUpstream)
                 ExtensionStatus = _text.Get("扩展_中止");
+            else if (batch.StopReason == ExtensionStopReason.UserStopped)
+                ExtensionStatus = _text.Get("错误_已取消");
+            else if (batch.RequestsIssued == 0 && batch.Outcomes.Count == 0)
+                // 一个候选都没有只有一种情况：这趟车在你查的区间上已经是全程票。
+                // 此时写"已完成 0 / 0"是句废话，用户会以为是功能坏了（设计 §6.3）。
+                ExtensionStatus = _text.Get("扩展_全程票");
             else if (batch.CandidatesNotQueried > 0)
                 ExtensionStatus = string.Format(_text.Get("扩展_未查完"), batch.CandidatesNotQueried);
             else

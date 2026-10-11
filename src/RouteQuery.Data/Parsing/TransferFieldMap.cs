@@ -41,6 +41,14 @@ public static class TransferFieldMap
         "same_station", "isOutStation", "fullList",
     ];
 
+    /// <summary>
+    /// <c>same_station</c> / <c>isOutStation</c> / <c>lCWaitTime</c> 这三个 0/1 字段
+    /// <b>语义未确认，不参与任何展示判断</b>：2026-10-10 的 10 份样本里它们恒为 "0"，
+    /// 而同一批方案有 9 个 <c>same_train="Y"</c>（同一趟车继续坐，显然不需要换车站）——
+    /// 说明 "0" 不等于"需要换站"。在拿到能区分取值的样本之前，界面只说候车时长。
+    /// </summary>
+    public static readonly string[] SemanticsUnconfirmed = ["same_station", "isOutStation", "lCWaitTime"];
+
     /// <summary>结构自检：单段必须齐这些字段。</summary>
     public static readonly string[] RequiredLegFields =
     [

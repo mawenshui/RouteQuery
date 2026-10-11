@@ -23,8 +23,8 @@ public sealed record TransferLeg(
 /// <summary>
 /// 一个中转方案：出发 → 中转 → 到达 的两段拼接。对应 FR-06 / FR-15。
 /// </summary>
-/// <param name="SameStation">两段是否在同一车站换乘（官方 <c>same_station</c>）。不同站换乘要跨城，必须显式告知。</param>
-/// <param name="RequiresExitingStation">是否需要出站再进站（官方 <c>isOutStation</c>）。</param>
+/// <param name="SameTrain">两段是否为同一趟车（官方 <c>same_train</c>）。<b>只透传不显示</b>：
+/// 见 <c>TransferFieldMap</c> 里关于这几个 0/1 字段语义未确认的说明。</param>
 /// <param name="WaitMinutes">中转候车分钟数（官方 <c>wait_time_minutes</c>）。负值方案在解析层就被丢弃。</param>
 /// <param name="TotalDurationText">官方原文的总历时（如 <c>4小时18分钟</c>）。<b>它不是 <c>hh:mm</c></b>——
 /// 实测这一段中文里带"小时/分钟"字样，按时间解析会得到 0。因此总历时以官方给的分钟数为准，
@@ -42,15 +42,19 @@ public sealed record TransferPlan(
     string TotalDurationText,
     DateOnly TravelDate,
     DateOnly ArrivalDate,
-    bool SameStation,
-    bool RequiresExitingStation,
+    bool SameTrain,
     bool PricesKnown)
 {
-    public bool ArrivesNextDay => ArrivalDate > TravelDate;
+    /// <summary>
+    /// 到达日相对出发日跨了几天（由官方给的 <c>train_date</c> / <c>arrive_date</c> 相减，不做推断）。
+    /// 0 是当天到，1 是次日，可能更大——中转过夜再加长途是真会出现两天后的行程的，
+    /// 所以界面不能用一个"次日"覆盖所有情况。负值在解析层已判为数据对不上并丢弃。
+    /// </summary>
+    public int ArrivalDayOffset => ArrivalDate.DayNumber - TravelDate.DayNumber;
 
     /// <summary>任一段有票即算"这个方案眼下走得通"。两段都没票时不得显示成有票。</summary>
     public bool HasAnyTicket => First.Seats.Any(s => s.IsAvailable) && Second.Seats.Any(s => s.IsAvailable);
 
-    /// <summary>到达时刻。跨零点时第二段的 arrive_time 是次日钟点，界面另用 ArrivesNextDay 标注。</summary>
-    public string ArrivalTimeText() => $@"{Second.Arrival:hh\:mm}";
+    /// <summary>到达时刻。跨零点时第二段的 arrive_time 是次日钟点，界面另用 <see cref="ArrivalDayOffset"/> 标注。</summary>
+    public string ArrivalTimeText() => $@"{Second.Arrival:HH\:mm}";
 }

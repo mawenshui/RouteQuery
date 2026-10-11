@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using RouteQuery.Core.Errors;
 using RouteQuery.Core.Model;
@@ -54,7 +55,7 @@ public static class TransferParser
                 continue;
             }
 
-            var waitMinutes = Int(item, "wait_time_minutes");
+            var waitMinutes = ReadInt(item, "wait_time_minutes");
             if (waitMinutes < 0)
             {
                 negativeWait++;
@@ -68,19 +69,29 @@ public static class TransferParser
                 continue;
             }
 
+            var travelDate = ReadDate(item, "train_date");
+            var arrivalDate = ReadDate(item, "arrive_date");
+            // 官方自己给的两个日期互相矛盾时，这条方案的第几天到达无法确定；
+            // 宁可少一条并说明，也不能拿"当天到达"去显示一趟其实是次日的车。
+            if (arrivalDate < travelDate)
+            {
+                badShape++;
+                continue;
+            }
+
+            var totalMinutes = ReadInt(item, "all_lishi_minutes");
             plans.Add(new TransferPlan(
                 legs[0], legs[1],
                 Resolve(stations, Str(item, "middle_station_code"), Str(item, "middle_station_name")),
                 TimeSpan.FromMinutes(waitMinutes),
                 waitMinutes,
                 // 官方这个字段是"4小时18分钟"这种中文，不是 hh:mm：时长取分钟数，原文只用于显示。
-                TimeSpan.FromMinutes(Int(item, "all_lishi_minutes")),
-                Int(item, "all_lishi_minutes"),
+                TimeSpan.FromMinutes(totalMinutes),
+                totalMinutes,
                 Str(item, "all_lishi"),
-                ParseDate(item, "train_date"),
-                ParseDate(item, "arrive_date"),
-                Str(item, "same_station") == "1",
-                Str(item, "isOutStation") != "0",
+                travelDate,
+                arrivalDate,
+                Str(item, "same_train") == "Y",
                 PricesKnown: false));
         }
 
@@ -106,10 +117,10 @@ public static class TransferParser
                 Str(leg, "train_no"),
                 Resolve(stations, Str(leg, "from_station_telecode"), Str(leg, "from_station_name")),
                 Resolve(stations, Str(leg, "to_station_telecode"), Str(leg, "to_station_name")),
-                TimeOnly.Parse(Str(leg, "start_time")),
-                TimeOnly.Parse(Str(leg, "arrive_time")),
-                ParseClock(leg, "lishi"),
-                int.TryParse(Str(leg, "day_difference"), out var d) ? d : 0,
+                ReadClock(leg, "start_time"),
+                ReadClock(leg, "arrive_time"),
+                ReadDuration(leg, "lishi"),
+                ReadInt(leg, "day_difference"),
                 Seats(leg));
         }
         return legs;
@@ -124,8 +135,8 @@ public static class TransferParser
         var result = new List<SeatAvailability>();
         foreach (var (seatClass, field) in TransferFieldMap.SeatFields)
         {
-            if (!leg.TryGetProperty(field, out var el)) continue;
-            var raw = el.GetString() ?? string.Empty;
+            if (!leg.TryGetProperty(field, out _)) continue;
+            var raw = Str(leg, field);
             result.Add(new SeatAvailability(
                 seatClass, raw,
                 AvailabilityDecoder.Decode(raw, PurchaseState.Unknown, seatClass, trainSupportsWaitlist: false),
@@ -144,14 +155,42 @@ public static class TransferParser
     private static string Str(JsonElement el, string field) =>
         el.TryGetProperty(field, out var v) ? v.ValueKind == JsonValueKind.String ? v.GetString() ?? string.Empty : v.ToString() : string.Empty;
 
-    private static int Int(JsonElement el, string field) =>
-        int.TryParse(Str(el, field), out var v) ? v : 0;
+    /// <summary>
+    /// 时刻字段（<c>start_time</c> / <c>arrive_time</c>）必须是 <c>HH:mm</c>。
+    /// 解不出来一律判 <c>ParseFailure</c>：退化成 <c>00:00</c> 会把一趟下午的车显示成凌晨，
+    /// 而那是会直接把人送上错车的错（AGENTS 六.2「禁止猜着往下解析」）。
+    /// </summary>
+    private static TimeOnly ReadClock(JsonElement el, string field)
+    {
+        var raw = Str(el, field);
+        return TimeOnly.TryParse(raw, CultureInfo.InvariantCulture, out var t)
+            ? t : throw Drift(field, raw, "HH:mm 的时刻");
+    }
 
     /// <summary>单段历时是 <c>hh\:mm</c>（如 "03:14"），超过一天的用 day_difference 表达。
     /// <b>总历时不是这个格式</b>，见 <c>TotalDurationText</c>。</summary>
-    private static TimeSpan ParseClock(JsonElement el, string field) =>
-        TimeSpan.TryParse(Str(el, field), System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : TimeSpan.Zero;
+    private static TimeSpan ReadDuration(JsonElement el, string field)
+    {
+        var raw = Str(el, field);
+        return TimeSpan.TryParse(raw, CultureInfo.InvariantCulture, out var t)
+            ? t : throw Drift(field, raw, "hh:mm 的时长");
+    }
 
-    private static DateOnly ParseDate(JsonElement el, string field) =>
-        DateOnly.TryParse(Str(el, field), System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : DateOnly.MinValue;
+    private static DateOnly ReadDate(JsonElement el, string field)
+    {
+        var raw = Str(el, field);
+        return DateOnly.TryParse(raw, CultureInfo.InvariantCulture, out var d)
+            ? d : throw Drift(field, raw, "yyyy-MM-dd 的日期");
+    }
+
+    /// <summary>数值字段解不出来不许当 0：候车 0 分钟、全程 0 分钟都是凭空造出来的数（NFR-18）。</summary>
+    private static int ReadInt(JsonElement el, string field)
+    {
+        var raw = Str(el, field);
+        return int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)
+            ? v : throw Drift(field, raw, "整数");
+    }
+
+    private static QueryException Drift(string field, string raw, string expected) =>
+        QueryException.ParseFailure($"中转响应字段 {field} 的值“{raw}”不是预期的{expected}，停止出数");
 }
