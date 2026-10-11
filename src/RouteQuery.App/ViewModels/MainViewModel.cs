@@ -25,6 +25,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private readonly IQueryHistory _history;
     private readonly ITransferQueryService _transfer;
     private readonly IStationTableUpdater _stationUpdate;
+    private readonly IReleaseFeed _release;
 
     private Station? _from;
     private Station? _to;
@@ -57,7 +58,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         IRouteBook book,
         IQueryHistory history,
         IStationTableUpdater stationUpdate,
-        ITransferQueryService transfer)
+        ITransferQueryService transfer,
+        IReleaseFeed release)
     {
         _stations = stations;
         _query = query;
@@ -72,6 +74,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         _history = history;
         _stationUpdate = stationUpdate;
         _transfer = transfer;
+        _release = release;
         _statusText = text.Get("状态_空");
         _dailyRemaining = _budget.DailyRemaining;
 
@@ -91,6 +94,10 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         UpdateStationsCommand = new Mvvm.AsyncCommand(UpdateStationsAsync);
         TransferQueryCommand = new Mvvm.AsyncCommand(RunTransferAsync);
         OpenOfficialCommand = new Mvvm.AsyncCommand(OpenOfficialAsync);
+
+        // 启动时检查一次新版本（FR-36：仅启动时一次，不定时、不轮询、不因用户操作重复发起）。
+        // 故意不等它、也不让它挡首屏——这个动作失败必须完全无声。
+        if (_settings.Load().CheckUpdatesEnabled) _ = CheckForUpdateAsync(CancellationToken.None);
     }
 
     public Mvvm.AsyncCommand QueryCommand { get; }
@@ -274,6 +281,50 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         {
             TransferStatus = _text.Get("错误_已取消");
         }
+    }
+
+    // ── 检查更新（FR-36 / SPEC-007 六.1 唯一允许的第三方出站）──────────────
+    private string _updateNote = string.Empty;
+
+    /// <summary>状态栏的弱提示。没有新版本时它是空串，界面靠这个决定出不出现。</summary>
+    public string UpdateNote => _updateNote;
+
+    public bool HasUpdateNote => _updateNote.Length > 0;
+
+    /// <summary>发布页地址。由数据层的仓库常量拼出，不来自响应内容。</summary>
+    public string ReleasePageUrl => _release.ReleasePageUrl;
+
+    /// <summary>检查开关。SPEC-007 六.1 把"必须可关闭"写成这个例外的成立条件，所以它落盘要立即生效。</summary>
+    public bool CheckUpdatesEnabled
+    {
+        get => _settings.Load().CheckUpdatesEnabled;
+        set
+        {
+            _settings.Save(_settings.Load() with { CheckUpdatesEnabled = value });
+            if (!value) ClearUpdateNote();
+            Raise(nameof(CheckUpdatesEnabled));
+        }
+    }
+
+    /// <summary>
+    /// 取一次最新版本号并比较。<b>整个过程不允许产生任何用户可见的失败</b>：
+    /// 取不到就什么都不做（连"检查失败"都不说），取到但没有更新也不说——
+    /// 需求把这条列为硬性要求，因为"检查更新失败"在亲友眼里会被读成"应用坏了"（FR-36 失败处理）。
+    /// </summary>
+    public async Task CheckForUpdateAsync(CancellationToken ct)
+    {
+        var latest = await _release.FetchLatestVersionAsync(ct);
+        if (latest is null || !Update.ReleaseChecker.IsNewer(latest, AppVersion)) return;
+
+        _updateNote = string.Format(_text.Get("更新_有新版本"), latest, AppVersion);
+        Raise(nameof(UpdateNote), nameof(HasUpdateNote));
+    }
+
+    private void ClearUpdateNote()
+    {
+        if (_updateNote.Length == 0) return;
+        _updateNote = string.Empty;
+        Raise(nameof(UpdateNote), nameof(HasUpdateNote));
     }
 
     // ── 登录态（FR-24 / FR-25）──────────────────────────────
@@ -653,7 +704,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         var sorted = JourneySorter.Apply(filtered, SortKey);
 
         Rows.Clear();
-        foreach (var j in sorted) Rows.Add(new JourneyRowViewModel(j, _text));
+        foreach (var j in sorted) Rows.Add(new JourneyRowViewModel(j, _text, DateTimeOffset.Now));
 
         State = sorted.Count > 0 ? ViewState.Results
             : Raw.Count == 0 ? ViewState.Results

@@ -14,7 +14,7 @@ namespace RouteQuery.Tests;
 /// </summary>
 public class XamlBindingGuardTests
 {
-    private static readonly string AppDir = FindAppDir(AppContext.BaseDirectory);
+    private static readonly string AppDir = Path.Combine(Samples.RepoRoot, "src", "RouteQuery.App");
 
     [Fact]
     public void XAML里绑定的属性名必须在代码里真实存在()
@@ -58,6 +58,28 @@ public class XamlBindingGuardTests
     private static IEnumerable<string> Names(string text, string pattern) =>
         Regex.Matches(text, pattern).Select(m => m.Groups[1].Value);
 
+    [Fact]
+    public void 学生票与儿童票只许出现在那句口径说明里()
+    {
+        // FR-34 的验收①："界面上不存在任何标注为学生票/儿童票的价格数字"。
+        // 列 39 在同一席别下确实有第二条价格，而它的业务含义没确认（Q-05 残余）——
+        // 所以这两个词只允许待在需求定死的那句中性和说明里，一旦出现在别处就是有人拿猜测当数据。
+        var offenders = Tagged(AppDir, "*.xaml").Concat(Tagged(AppDir, "*.cs"))
+            .Where(f => f.Text.Contains("学生") || f.Text.Contains("儿童"))
+            .Select(f => f.File)
+            .ToList();
+
+        Assert.Equal(["文案.xaml"], offenders);
+        var sentence = KeyLine("票价_口径");
+        Assert.Contains("学生票、儿童票按官方规则计算", sentence);
+        Assert.Contains("以 12306 显示的价格为准", sentence);
+    }
+
+    private static string KeyLine(string key) =>
+        Tagged(AppDir, "*.xaml")
+            .SelectMany(f => Regex.Matches(f.Text, @"<sys:String x:Key=""" + key + @""">([^<]*)</sys:String>").Select(m => m.Groups[1].Value))
+            .Single();
+
     private static HashSet<string> PublicPropertyNames()
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -73,18 +95,6 @@ public class XamlBindingGuardTests
         return Directory.EnumerateFiles(dir, pattern, SearchOption.AllDirectories)
             .Where(p => !skip.Any(s => p.StartsWith(s, StringComparison.Ordinal)))
             .Select(p => (Path.GetFileName(p), File.ReadAllText(p)));
-    }
-
-    private static string FindAppDir(string start)
-    {
-        var dir = new DirectoryInfo(start);
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir.FullName, "src", "RouteQuery.App");
-            if (Directory.Exists(candidate)) return candidate;
-            dir = dir.Parent;
-        }
-        throw new InvalidOperationException("从测试输出目录往上找不到 src/RouteQuery.App，本守卫依赖源码树位置。");
     }
 
     /// <summary>取 <c>{Binding X}</c> / <c>{Binding X.Y}</c> 的路径；只有修饰符没有路径的那种（<c>{Binding Mode=OneWay}</c>）跳过。</summary>

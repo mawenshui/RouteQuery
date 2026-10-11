@@ -8,7 +8,9 @@ namespace RouteQuery.App.ViewModels;
 /// <para>刻意<b>不做</b>的事：不重新计算任何业务数值。历时、次日、余票状态都在数据层算好，
 /// 这里只负责"怎么显示"——否则同一个数字会有两套算法，迟早对不上。</para>
 /// </summary>
-public sealed class JourneyRowViewModel(TrainJourney journey, ITextProvider text) : Mvvm.ViewModelBase
+/// <param name="now">本次查询发生时应用侧的时刻，只用于判断起售时间到没到（FR-33）。
+/// 由调用方给而不是内部取 <c>DateTimeOffset.Now</c>，为的是这一条能写成测试。</param>
+public sealed class JourneyRowViewModel(TrainJourney journey, ITextProvider text, DateTimeOffset now) : Mvvm.ViewModelBase
 {
     public TrainJourney Model { get; } = journey;
 
@@ -66,6 +68,21 @@ public sealed class JourneyRowViewModel(TrainJourney journey, ITextProvider text
 
     /// <summary>放票时间（FR-33）。官方未给时整行不显示，不显示猜测值。</summary>
     public string OnSaleText => Model.OnSaleAt is { } t ? t.ToString("M月d日 HH:mm 起售") : string.Empty;
+
+    /// <summary>详情区要不要出现起售这一行。官方列 55 缺失时整行不出现（FR-33 边界）。</summary>
+    public bool HasOnSale => Model.OnSaleAt is not null;
+
+    /// <summary>
+    /// 详情区的起售时间（FR-33）。未到写成"9 月 28 日 08:00 起售"，已过写成"已过起售时间"——
+    /// 对一趟今天已经在卖的车重复"X 月 X 日起售"，会被读成"还没开卖"。
+    /// 这里比较的是官方给的放票时刻与本次查询的时刻，不做任何推算，也不放定时器（FR-33 不做项）。
+    /// </summary>
+    public string OnSaleNote => Model.OnSaleAt switch
+    {
+        null => string.Empty,
+        { } t when t > now => string.Format(text.Get("详情_即将起售"), t.ToString("M月d日 HH:mm")),
+        _ => text.Get("详情_已过起售"),
+    };
 
     /// <summary>尚未开售的车次单独标注，避免被误读成"卖光了"。</summary>
     public bool IsNotYetOnSale => Model.PurchaseState == PurchaseState.NotYetOnSale;

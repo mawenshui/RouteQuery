@@ -59,6 +59,13 @@
                 </StackPanel>
             </GroupBox>
 
+            <GroupBox Header="{DynamicResource 设置_更新区}" Padding="10" Margin="0,12,0,0">
+                <!-- SPEC-007 六.1 允许 GitHub 版本检查这个例外，条件之一是"必须可关闭"。
+                     勾掉立即落盘，本次运行也不再提示——所以它不是一个只影响下次的装饰开关。 -->
+                <CheckBox Content="{DynamicResource 设置_检查更新}" IsChecked="{Binding CheckUpdatesEnabled}"
+                          FontSize="12" Foreground="#4A4A4A"/>
+            </GroupBox>
+
             <GroupBox Header="{DynamicResource 设置_数据区}" Padding="10" Margin="0,12,0,0">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource 设置_位置}" Style="{StaticResource Hint}"/>

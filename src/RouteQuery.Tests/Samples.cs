@@ -80,4 +80,22 @@ internal static class Samples
         throw new InvalidOperationException(
             $"未找到 测试/接口样本 目录（从 {start} 向上查找）。测试依赖真实样本，缺失时必须失败而不是跳过。");
     }
+
+    /// <summary>
+    /// 仓库根目录。守卫类测试要读**源码本身**（核对绑定名、找硬编码颜色、找定时器），
+    /// 而测试输出目录里只有编译产物，所以只能从可执行文件所在目录往上找。
+    /// </summary>
+    internal static string RepoRoot { get; } = FindRepoRoot(AppContext.BaseDirectory);
+
+    private static string FindRepoRoot(string start)
+    {
+        var dir = new DirectoryInfo(start);
+        while (dir is not null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "src")) && File.Exists(Path.Combine(dir.FullName, "AGENTS.md")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+        throw new InvalidOperationException($"从 {start} 往上找不到仓库根（判据：同时存在 src/ 与 AGENTS.md）。");
+    }
 }

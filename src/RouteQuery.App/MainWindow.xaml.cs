@@ -38,6 +38,20 @@ public partial class MainWindow : Window
     private void Settings_Click(object sender, RoutedEventArgs e) =>
         new Web.SettingsWindow { Owner = this, DataContext = Vm }.ShowDialog();
 
+    /// <summary>打开发布页（FR-36）。地址来自数据层的仓库常量，不来自响应内容；本应用同样不发这个请求。</summary>
+    private void OpenRelease_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = Vm.ReleasePageUrl, UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // 打不开就不说：这条提示的存在与否都不该影响用户查车次。
+        }
+    }
+
     // ── 侧栏：收藏与历史（FR-16 / FR-17）────────────────────
     private void SaveRoute_Click(object sender, RoutedEventArgs e) => Vm.SaveCurrentRoute();
 

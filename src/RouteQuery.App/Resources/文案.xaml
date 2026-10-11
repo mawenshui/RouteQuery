@@ -110,6 +110,14 @@
     <sys:String x:Key="详情_到时">到时</sys:String>
     <sys:String x:Key="详情_发时">发时</sys:String>
     <sys:String x:Key="详情_停留">停留</sys:String>
+    <sys:String x:Key="详情_即将起售">{0} 起售</sys:String>
+    <sys:String x:Key="详情_已过起售">已过起售时间</sys:String>
+    <!-- FR-34：措辞是需求里定死的原话，不改写、不加"仅供参考"之类的软化 -->
+    <sys:String x:Key="票价_口径">这里显示的是成人票面价格。学生票、儿童票按官方规则计算，下单时以 12306 显示的价格为准。</sys:String>
+    <!-- FR-36：弱提示。不弹窗、不高亮，点开才去浏览器看发布页 -->
+    <sys:String x:Key="更新_有新版本">发现新版本 {0}（当前 {1}）</sys:String>
+    <sys:String x:Key="设置_检查更新">启动时检查一次新版本（只向 GitHub 问一次版本号，不带任何你的信息；关掉后完全不出站）</sys:String>
+    <sys:String x:Key="设置_更新区">更新</sys:String>
 
     <sys:String x:Key="侧栏_收藏">常用线路</sys:String>
     <sys:String x:Key="侧栏_历史">最近查询</sys:String>

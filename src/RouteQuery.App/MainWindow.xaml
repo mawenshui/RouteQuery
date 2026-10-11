@@ -202,7 +202,7 @@
                     <ListView x:Name="ResultList" ItemsSource="{Binding Rows}"
                               SelectedItem="{Binding Selected, Mode=TwoWay}"
                               BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.IsVirtualizing="True" Margin="0,0,0,40"
                               Visibility="{Binding State, Converter={StaticResource StateVis}, ConverterParameter=Results}">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
@@ -257,6 +257,12 @@
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
+
+                    <!-- 票价口径（FR-34）：常驻、不折叠、不放进"?"。价格就在上方几列里，说明必须贴着价格放，
+                         否则用户读到的是"官方票价"而不是"成人票面价"。 -->
+                    <TextBlock Text="{DynamicResource 票价_口径}" TextWrapping="Wrap" FontSize="11"
+                               Style="{StaticResource HintText}" Margin="8,0,8,10" VerticalAlignment="Bottom"
+                               Visibility="{Binding State, Converter={StaticResource StateVis}, ConverterParameter=Results}"/>
 
                     <TextBlock Text="{DynamicResource 状态_筛选后空}" TextWrapping="Wrap" Margin="24"
                                VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="620"
@@ -338,6 +344,10 @@
                     <TextBlock DockPanel.Dock="Left">
                         <Run Text="{Binding Selected.TrainCode, Mode=OneWay}"/><Run Text="  "/><Run Text="{DynamicResource 详情_标题}"/><Run Text="  "/>
                     </TextBlock>
+                    <!-- 起售时间（FR-33）：官方列 55 没给就整块不出现；未到与已过是两句话 -->
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Selected.OnSaleNote}" Margin="0,0,12,0"
+                               Style="{StaticResource HintText}"
+                               Visibility="{Binding Selected.HasOnSale, Converter={StaticResource BoolVis}}"/>
                     <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_跳官方}" Padding="10,2"
                             Margin="0,0,12,0" Command="{Binding OpenOfficialCommand}"/>
                     <TextBlock DockPanel.Dock="Right" Text="{Binding OfficialReminder}" MaxWidth="480"
@@ -439,6 +449,12 @@
                        Text="{Binding StatusText}"/>
             <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_设置}" Padding="10,2" Margin="12,0,0,0"
                     Click="Settings_Click"/>
+            <!-- 新版本提示（FR-36）：弱到不改变阅读顺序，点一下交给系统浏览器打开发布页。
+                 没有新版本时这个位置是空的，不占位也不解释。 -->
+            <Button DockPanel.Dock="Right" Content="{Binding UpdateNote}" Padding="10,2" Margin="12,0,0,0"
+                    FontSize="11" Foreground="#1B6B3A" Background="Transparent" BorderThickness="0"
+                    Click="OpenRelease_Click"
+                    Visibility="{Binding HasUpdateNote, Converter={StaticResource BoolVis}}"/>
             <TextBlock DockPanel.Dock="Right" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"/>
         </DockPanel>
     </Grid>
