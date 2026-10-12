@@ -4,11 +4,11 @@
     <ProjectReference Include="..\RouteQuery.Core\RouteQuery.Core.csproj" />
   </ItemGroup>
 
-  <!-- 内置站点码表：随构建输出，保证断网也能完成一次查询（FR-18 / NFR-11） -->
+  <!-- 内置站点码表：**嵌进程序集**而不是随 exe 放一个文件。
+       断网也能完成一次查询（FR-18 / NFR-11），而"只拷了 exe 就报读不出站点数据"这个坑随之消失。
+       手动更新的新码表仍然写成本地文件并优先于内置副本（见 StationTableLoader.LoadUpdated）。 -->
   <ItemGroup>
-    <None Update="Resources\stations.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <EmbeddedResource Include="Resources\stations.json" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />

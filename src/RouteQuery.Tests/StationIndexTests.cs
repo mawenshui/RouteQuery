@@ -105,4 +105,19 @@ public class StationIndexTests
         Assert.Equal("北京", items[0].CityName);
         Assert.Equal("BDP", items[1].Telecode);
     }
+
+    [Fact]
+    public void 内置码表是嵌在程序集里的而不是旁边的文件()
+    {
+        // 0.3.0-rc3 起内置码表改为嵌入资源。这条测试守的是"打包形态"本身：
+        // 一旦 csproj 里那行 EmbeddedResource 被改回 CopyToOutputDirectory，
+        // 亲友漏拷 Resources 目录就又是"每次查询都报读不出站点数据"——而它在开发机上看不出来。
+        var names = typeof(StationTableLoader).Assembly.GetManifestResourceNames();
+
+        Assert.Contains(names, n => n.EndsWith("stations.json", StringComparison.OrdinalIgnoreCase));
+
+        var table = StationTableLoader.LoadBundled();
+        Assert.True(table.Items.Count >= 3000, $"内置码表只剩 {table.Items.Count} 条，不像一份完整的表");
+        Assert.Contains(table.Items, s => s.Telecode == "VNP");   // 北京南
+    }
 }

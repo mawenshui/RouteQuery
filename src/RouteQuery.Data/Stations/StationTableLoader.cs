@@ -27,8 +27,8 @@ internal sealed record StationDoc(
 /// </summary>
 public static class StationTableLoader
 {
-    /// <summary>内置码表相对程序目录的路径。</summary>
-    public const string BundledRelativePath = "Resources/stations.json";
+    /// <summary>内置码表在程序集里的资源名后缀。按后缀找而不是写全名：RootNamespace 一改全名就对不上。</summary>
+    private const string BundledResourceSuffix = "stations.json";
 
     /// <summary>
     /// 加载"手动更新后"的本地码表；不存在或校验不过时返回 null，由调用方退回内置副本。
@@ -62,19 +62,30 @@ public static class StationTableLoader
         JsonFileStore.WriteAtomic(file, System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
     }
 
-    /// <summary>加载内置码表。</summary>
-    /// <exception cref="InvalidOperationException">内置副本缺失或规模异常。此时应用必须禁用查询并说明原因（BF-03）。</exception>
-    public static StationTable LoadBundled(string? baseDirectory = null)
+    /// <summary>
+    /// 加载内置码表。它<b>嵌在数据层程序集里</b>，不是 exe 旁边的一个文件——
+    /// 这样"只拷一个 RouteQuery.exe 出去"就是完整可用的程序，
+    /// 而"亲友漏拷 Resources 目录 → 每次查询都报读不出站点数据"这一整类故障不再存在。
+    /// </summary>
+    /// <exception cref="InvalidOperationException">资源缺失或规模异常。此时应用必须禁用查询并说明原因（BF-03）。</exception>
+    public static StationTable LoadBundled()
     {
-        var path = Path.Combine(baseDirectory ?? AppContext.BaseDirectory, BundledRelativePath);
-        if (!File.Exists(path))
-            throw new InvalidOperationException($"内置站点数据缺失：{path}");
+        var assembly = typeof(StationTableLoader).Assembly;
+        var resourceName = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith(BundledResourceSuffix, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"内置站点数据没有嵌入程序集（找不到以 {BundledResourceSuffix} 结尾的嵌入资源）");
 
-        var doc = Deserialize(ReadUtf8(path));
-        if (doc is null || !StationNameLoader.IsPlausible(doc.Stations.Select(ToStation).ToList()))
-            throw new InvalidOperationException("内置站点数据规模异常，可能被截断");
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"内置站点数据读取失败：{resourceName}");
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+
+        var doc = Deserialize(reader.ReadToEnd());
+        if (doc is null) throw new InvalidOperationException("内置站点数据读不出来，可能被截断");
 
         var items = doc.Stations.Select(ToStation).ToList();
+        if (!StationNameLoader.IsPlausible(items))
+            throw new InvalidOperationException("内置站点数据规模异常，可能被截断");
+
         return new StationTable(DateOnly.Parse(doc.SourceDate, System.Globalization.CultureInfo.InvariantCulture), items);
     }
 
