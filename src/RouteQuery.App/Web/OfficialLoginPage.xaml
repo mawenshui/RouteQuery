@@ -5,6 +5,7 @@
         Title="{DynamicResource 登录_标题}"
         Width="920" Height="740" MinWidth="560" MinHeight="420"
         WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource 笔刷_窗口底}" TextBlock.Foreground="{DynamicResource 笔刷_文字}"
         FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13">
 
     <DockPanel>

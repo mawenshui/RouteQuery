@@ -17,14 +17,19 @@ public static class LeftTicketColumnLayout
 
     // ── 标识与时刻 ───────────────────────────────────────────
     public static readonly ColumnSpec SecretStr = new(0);
+
+    /// <summary>官方给这条记录的一句状态话。正常车次这里是"预订"；
+    /// 运行图调整时官方在这里直接写"列车运行图调整,暂停发售"，并把时刻填成哨兵值。</summary>
+    public static readonly ColumnSpec StatusMessage = new(1);
+
     public static readonly ColumnSpec TrainNo = new(2);
     public static readonly ColumnSpec TrainCode = new(3, Patterns.TrainCode);
     public static readonly ColumnSpec StartStationTelecode = new(4);
     public static readonly ColumnSpec EndStationTelecode = new(5);
     public static readonly ColumnSpec FromStationTelecode = new(6);
     public static readonly ColumnSpec ToStationTelecode = new(7);
-    public static readonly ColumnSpec Departure = new(8, Patterns.Clock);
-    public static readonly ColumnSpec Arrival = new(9, Patterns.Clock);
+    public static readonly ColumnSpec Departure = new(8, Patterns.ClockTime);
+    public static readonly ColumnSpec Arrival = new(9, Patterns.ClockTime);
     public static readonly ColumnSpec Duration = new(10, Patterns.Clock);
 
     /// <summary>
@@ -94,4 +99,20 @@ public static class LeftTicketColumnLayout
 
     /// <summary>参与结构自检的三列：车次号、发车时刻、到达时刻。任一不合格式即判解析失败。</summary>
     public static ColumnSpec[] SelfCheckColumns => [TrainCode, Departure, Arrival];
+
+    /// <summary>
+    /// 官方在"运行图调整、暂停发售"时会塞进一条占位记录：车次号是真的，但时刻是哨兵值
+    /// <c>24:00 / 24:00 / 99:59</c>、可购状态是 <c>IS_TIME_NOT_BUY</c>、列 1 写着那句中文。
+    /// <para>2026-10-12 实测（北京南→上海虹桥 2026-10-13，54 条记录里 1 条是它）。
+    /// 它<b>不是</b>结构漂移：把它当漂移会让整趟查询不出数，用户看到的是"这个版本查不了"，
+    /// 而官方其实给了 53 趟真数据。所以这里精确识别这一种形态，把它单独摘出去并计数说明；
+    /// 任何其它不合格的时刻仍然判 <c>ParseFailure</c>，不许顺手放宽。</para>
+    /// </summary>
+    public static bool IsTimetableSuspended(string[] cols) =>
+        cols.Length == ExpectedColumnCount
+        && cols[Departure.Index] == "24:00"
+        && cols[Arrival.Index] == "24:00"
+        && cols[Duration.Index] == "99:59"
+        && cols[CanWebBuy.Index] == "IS_TIME_NOT_BUY"
+        && cols[StatusMessage.Index].Length > 0;
 }

@@ -51,18 +51,39 @@ public sealed class TrainQueryService(
 
         if (first.RedirectTo is { } redirect)
         {
-            // 路径后缀漂移。跟随一次，并把新后缀记进缓存，下次就不用再花一次重定向的额度。
             var discovered = EndpointResolver.SuffixFrom(redirect);
-            if (discovered is not null) endpoints.SaveLeftTicketSuffix(discovered);
+            if (discovered is null)
+                // 官方有时把请求丢到非查询路径（2026-10-12 实测见过 302 到 www.12306.cn 的 error.html）。
+                // 那是"这次请求不被接受"，不是"数据格式变了"。跟进去只会拿回一段 HTML，
+                // 然后把一个风控信号报成"等新版"——用户会傻等一个根本不会来的更新。
+                throw new QueryException(QueryErrorKind.UpstreamRejected,
+                    $"官方把请求引导到非查询路径：{Host(redirect)}");
+
+            // 路径后缀漂移。跟随一次，并把新后缀记进缓存，下次就不用再花一次重定向的额度。
+            endpoints.SaveLeftTicketSuffix(discovered);
 
             var second = await gate.RunAsync(kind, OfficialClient.ApiLeftTicket + "(跟随重定向)",
                 ct => client.GetAbsoluteAsync(redirect, ct), cancellationToken).ConfigureAwait(false);
             body = second.Body;
         }
 
-        var journeys = parser.Parse(body);
-
-        return journeys;
+        try
+        {
+            var journeys = parser.Parse(body);
+            if (parser.LastSuspendedMessages.Count > 0)
+                gate.Note($"官方占位记录 {parser.LastSuspendedMessages.Count} 条：{parser.LastSuspendedMessages[0]}");
+            return journeys;
+        }
+        catch (QueryException ex)
+        {
+            // 解析失败必须留痕。界面上那句"请把这条提示截图发我"太脆——同一个错在日志里
+            // 要有一句能区分"哪一列不对"的记录，否则远程排障只能靠猜。
+            gate.Note($"解析失败 {ex.Kind}: {ex.Message}");
+            throw;
+        }
     }
+
+    private static string Host(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.Host : "无法识别的地址";
 }
 

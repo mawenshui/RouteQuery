@@ -7,7 +7,7 @@
         Width="1280" Height="800" MinWidth="1080" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13"
-        Background="{DynamicResource 笔刷_窗口底}"
+        Background="{DynamicResource 笔刷_窗口底}" TextBlock.Foreground="{DynamicResource 笔刷_文字}"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         mc:Ignorable="d"
@@ -169,7 +169,9 @@
         <!-- ══ 结果区 ══ -->
         <TabControl Grid.Row="2" Background="Transparent" BorderBrush="{DynamicResource 笔刷_边框}">
             <TabItem Header="{DynamicResource 页签_直达}">
-                <Grid>
+                <!-- 页签标题由主题样式定成"落在系统浅页签上的深色"，那份颜色会顺着内容继承下来，
+                     所以内容区必须在这里把文字色重新定回主题色，否则深色档下整页内容是深字配深底。 -->
+                <Grid TextBlock.Foreground="{DynamicResource 笔刷_文字}">
                     <TextBlock Text="{DynamicResource 状态_空}" TextWrapping="Wrap" Margin="24"
                                VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="620"
                                TextAlignment="Center" FontSize="14"
@@ -267,7 +269,7 @@
             </TabItem>
 
             <TabItem Header="{DynamicResource 页签_中转}">
-                <Grid>
+                <Grid TextBlock.Foreground="{DynamicResource 笔刷_文字}">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="600"
                                 Visibility="{Binding HasLoginSession, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
                         <TextBlock Text="{Binding SessionSummary}" TextWrapping="Wrap" TextAlignment="Center" FontSize="14"/>

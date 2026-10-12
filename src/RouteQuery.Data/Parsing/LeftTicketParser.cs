@@ -17,6 +17,10 @@ public sealed class LeftTicketParser(IStationRepository stations)
     /// <summary>本次解析遇到的未知席别短码，供上层写诊断日志。</summary>
     public List<string> LastUnknownSeatCodes { get; private set; } = [];
 
+    /// <summary>本次被摘出去的官方占位记录（"运行图调整、暂停发售"）的原文，一条一项。
+    /// 它不参与出数，但必须能被上层说出来——官方给了这句话，藏起来就是替官方下结论。</summary>
+    public List<string> LastSuspendedMessages { get; private set; } = [];
+
     /// <summary>
     /// 解析响应正文。
     /// </summary>
@@ -64,11 +68,23 @@ public sealed class LeftTicketParser(IStationRepository stations)
                 records.Add(text.Split('|'));
             }
 
-            StructureValidator.AssertValid(records);
-
-            var journeys = new List<TrainJourney>(records.Count);
-            LastUnknownSeatCodes = [];
+            // 占位记录先摘出去，再自检：它的时刻是官方哨兵值（24:00 / 99:59），
+            // 让它进自检会把一整车真数据一起判死——那正是 2026-10-12 用户看到"这个版本查不了"的原因。
+            var usable = new List<string[]>(records.Count);
+            LastSuspendedMessages = [];
             foreach (var cols in records)
+            {
+                if (LeftTicketColumnLayout.IsTimetableSuspended(cols))
+                    LastSuspendedMessages.Add(cols[LeftTicketColumnLayout.StatusMessage.Index]);
+                else
+                    usable.Add(cols);
+            }
+
+            StructureValidator.AssertValid(usable);
+
+            var journeys = new List<TrainJourney>(usable.Count);
+            LastUnknownSeatCodes = [];
+            foreach (var cols in usable)
             {
                 var j = ToJourney(cols, namesFromResponse);
                 if (j is not null) journeys.Add(j);

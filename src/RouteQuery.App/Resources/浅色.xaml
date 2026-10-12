@@ -23,4 +23,7 @@
     <SolidColorBrush x:Key="笔刷_错误底">#B3261E</SolidColorBrush>
     <SolidColorBrush x:Key="笔刷_底上文字">#FFFFFF</SolidColorBrush>
 
+    <!-- 落在系统画的浅色控件上（选中的页签、下拉框、日历）的文字色：两档都是深色 -->
+    <SolidColorBrush x:Key="笔刷_系统底上文字">#1F1F1F</SolidColorBrush>
+
 </ResourceDictionary>

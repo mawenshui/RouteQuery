@@ -55,8 +55,16 @@ internal static class Patterns
     /// </summary>
     public const string TrainCode = "^[A-Z]?[0-9]{1,4}$";
 
-    /// <summary>时刻：24 小时制 HH:mm。</summary>
+    /// <summary>历时：<c>hh:mm</c>，小时数可以超过 23（长途车有 41:30 这种），所以只约束形状。</summary>
     public const string Clock = "^[0-9]{2}:[0-9]{2}$";
+
+    /// <summary>
+    /// 钟点：真正的 24 小时制，<c>00:00</c>–<c>23:59</c>。发车/到达时刻用它自检。
+    /// <para>与 <see cref="Clock"/> 分开写是因为实测出现过 <c>24:00</c> 这种<b>哨兵值</b>
+    /// （官方"运行图调整、暂停发售"的占位记录）。用宽松形状会让它混过自检、
+    /// 到解析那一步才炸，报出来的错就从"这一条是占位"变成"整批格式不符"。</para>
+    /// </summary>
+    public const string ClockTime = "^([01][0-9]|2[0-3]):[0-5][0-9]$";
 
     /// <summary>日期：yyyyMMdd。</summary>
     public const string CompactDate = "^[0-9]{8}$";

@@ -30,6 +30,44 @@ public class LeftTicketParserTests
     }
 
     [Fact]
+    public void 官方运行图调整占位记录不再把整批判死()
+    {
+        // 2026-10-12 实测：北京南→上海虹桥 54 条记录里有 1 条是官方占位（车次 G547，
+        // 时刻 24:00/24:00、历时 99:59、canWebBuy=IS_TIME_NOT_BUY、列 1 写着"列车运行图调整,暂停发售"）。
+        // 它当时让整趟查询报"官方数据格式变了"，用户看到的是一个查不了的版本——而官方给了 53 趟真数据。
+        var parser = NewParser();
+        var journeys = parser.Parse(Samples.Json("leftTicket-运行图调整样本.json"));
+
+        Assert.Equal(["1461", "G1", "G7"], journeys.Select(j => j.TrainCode).OrderBy(c => c).ToArray());
+        Assert.DoesNotContain("G547", journeys.Select(j => j.TrainCode));
+        Assert.Equal(["列车运行图调整,暂停发售"], parser.LastSuspendedMessages);
+    }
+
+    [Fact]
+    public void 不像占位记录的时刻异常仍然判解析失败()
+    {
+        // 摘出去的条件是"哨兵值成套出现"。把历时改成正常值、时刻仍留 24:00，
+        // 它就不该被当占位记录放过——自检必须响，否则这条规则会变成"以后什么怪时刻都放行"的口子。
+        var tampered = RecordsOf("leftTicket-运行图调整样本.json");
+        var placeholder = tampered.Single(r => r.Split('|')[3] == "G547");
+        var columns = placeholder.Split('|');
+        columns[10] = "06:00";
+        tampered[tampered.IndexOf(placeholder)] = string.Join('|', columns);
+
+        var ex = Assert.Throws<QueryException>(() => NewParser().Parse(Samples.Response(tampered)));
+
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+        Assert.Contains("列 8", ex.Message);
+    }
+
+    private static List<string> RecordsOf(string sample)
+    {
+        using var doc = JsonDocument.Parse(Samples.Json(sample));
+        return doc.RootElement.GetProperty("data").GetProperty("result")
+            .EnumerateArray().Select(e => e.GetString()!).ToList();
+    }
+
+    [Fact]
     public void 样本四条车次全部解析成功()
     {
         var journeys = ParseCrossTypeSample();

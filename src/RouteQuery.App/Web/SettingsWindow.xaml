@@ -5,7 +5,8 @@
         Title="{DynamicResource 设置_标题}"
         Width="560" Height="620" MinWidth="460" MinHeight="440"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13">
+        FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13"
+        Background="{DynamicResource 笔刷_窗口底}" TextBlock.Foreground="{DynamicResource 笔刷_文字}">
 
     <Window.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolVis"/>

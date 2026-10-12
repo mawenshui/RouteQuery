@@ -22,4 +22,6 @@
     <SolidColorBrush x:Key="笔刷_错误底">#8C2F22</SolidColorBrush>
     <SolidColorBrush x:Key="笔刷_底上文字">#FFF3F2</SolidColorBrush>
 
+    <SolidColorBrush x:Key="笔刷_系统底上文字">#1F1F1F</SolidColorBrush>
+
 </ResourceDictionary>
