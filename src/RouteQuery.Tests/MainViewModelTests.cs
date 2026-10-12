@@ -196,11 +196,11 @@ public class MainViewModelTests
         }
     }
 
-    private static TrainJourney Journey(string code, decimal? price = 553.00m) => new(
+    private static TrainJourney Journey(string code, decimal? price = 553.00m, SeatState state = SeatState.Available) => new(
         code, $"240000{code}0L", Beijing, Shanghai, Beijing, Shanghai,
         new TimeSpan(7, 0, 0), new TimeSpan(11, 24, 0), new TimeSpan(4, 24, 0),
         false, PurchaseState.Buyable,
-        [new SeatAvailability(SeatClass.SecondClass, "有", SeatState.Available, price)],
+        [new SeatAvailability(SeatClass.SecondClass, state == SeatState.Available ? "有" : "无", state, price)],
         null);
 
     // ── 状态机：四处实跑缺陷的回归 ──────────────────────────────
@@ -309,6 +309,36 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task 两站相同时不发请求()
+    {
+        // TC-A8 六项非法输入之一：官方对同站 OD 会返回一个看不懂的页面，本地就该拦下。
+        var h = new Harness();
+        h.Vm.FromPick = Beijing;
+        h.Vm.ToPick = Beijing;
+
+        await h.Vm.QueryAsync(default);
+
+        Assert.Equal(0, h.Query.Calls);
+        Assert.Equal(ViewState.Error, h.Vm.State);
+    }
+
+    [Fact]
+    public void 扩展站数越界被钳到边界而不是照用()
+    {
+        // TC-D6 / FR-29 验收③：配置或输入被改成界面上没有的值时，钳制发生在代码层。
+        var h = new Harness();
+
+        h.Vm.MaxExtensionStations = 0;
+        var low = h.Vm.MaxExtensionStations;
+        h.Vm.MaxExtensionStations = 11;
+        var high = h.Vm.MaxExtensionStations;
+
+        Assert.Equal(AppSettings.MinStations, low);
+        Assert.Equal(AppSettings.MaxStations, high);
+        Assert.Equal(AppSettings.MaxStations, h.Settings.Current.MaxExtensionStations);
+    }
+
+    [Fact]
     public async Task 码表不可用时禁用查询并说明原因()
     {
         // BF-03：内置码表读不出来时应用要继续跑，只是不能发查询。
@@ -372,6 +402,41 @@ public class MainViewModelTests
 
         Assert.NotEqual(ViewState.Error, h.Vm.State);
         Assert.Equal("错误_已取消", h.Vm.StatusText);
+    }
+
+    [Fact]
+    public async Task 筛没了和官方没有是两种说法()
+    {
+        // AGENTS 七.6：NoResult 是官方给的信息，"筛没了"是我们自己过滤的结果，混起来会让人白等。
+        var h = new Harness();
+        h.Query.Result = [Journey("G1", state: SeatState.SoldOut)];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+        Assert.Equal(ViewState.Results, h.Vm.State);
+
+        h.Vm.OnlyAvailable = true;
+
+        Assert.Equal(ViewState.FilteredEmpty, h.Vm.State);
+        Assert.Equal("状态_筛选后空", h.Vm.StatusText);
+    }
+
+    [Fact]
+    public async Task 互换两站保留日期与筛选而结果区回到未查询()
+    {
+        // TC-A6：换向是一个准备动作，不该顺手把用户的筛选条件清光，也不该报一个错。
+        var h = new Harness();
+        h.Query.Result = [Journey("G1")];
+        h.Ready();
+        h.Vm.OnlyAvailable = true;
+        await h.Vm.QueryAsync(default);
+
+        h.Vm.Swap();
+
+        Assert.Equal("上海虹桥", h.Vm.FromText);
+        Assert.Equal("北京南", h.Vm.ToText);
+        Assert.True(h.Vm.OnlyAvailable);
+        Assert.Equal(ViewState.Empty, h.Vm.State);   // 列表因此隐藏：看到的是"还没查询"，不是错误
+        Assert.Equal(1, h.Query.Calls);              // 换向本身不发请求，等用户点查询
     }
 
     // ── 中转与登录态（FR-06 / FR-24 / FR-25）─────────────────────
