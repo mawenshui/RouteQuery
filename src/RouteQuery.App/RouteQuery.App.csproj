@@ -9,6 +9,15 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 视图模型的异步动作（查询、经停、扩展、中转、码表更新）是 internal 的：
+         命令本身是 async void，测试要 await 才能断言"跑完之后状态是什么"。
+         只对测试程序集开这一个口子，与数据层对会话读取的处理方式一致。 -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>RouteQuery.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>

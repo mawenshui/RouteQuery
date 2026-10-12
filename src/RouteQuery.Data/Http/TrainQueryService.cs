@@ -72,6 +72,10 @@ public sealed class TrainQueryService(
             var journeys = parser.Parse(body);
             if (parser.LastSuspendedMessages.Count > 0)
                 gate.Note($"官方占位记录 {parser.LastSuspendedMessages.Count} 条：{parser.LastSuspendedMessages[0]}");
+            if (parser.LastUnknownSeatCodes.Count > 0)
+                // 未知短码意味着官方的席别编码表动了。它不影响本次出数（原样透传），
+                // 但没有这行日志，下一次席别错位就会以"看不懂的数据"的形式浮出来。
+                gate.Note($"未知席别短码：{string.Join(",", parser.LastUnknownSeatCodes.Distinct())}");
             return journeys;
         }
         catch (QueryException ex)

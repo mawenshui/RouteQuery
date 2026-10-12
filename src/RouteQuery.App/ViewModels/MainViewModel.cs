@@ -216,7 +216,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         BookStatus = _text.Get("历史_已清空");
     }
 
-    private void RefreshSaved()
+    internal void RefreshSaved()
     {
         SavedRoutes.Clear();
         foreach (var r in _book.All) SavedRoutes.Add(r);
@@ -236,7 +236,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
 
     public bool HasTransfers => Transfers.Count > 0;
 
-    private async Task RunTransferAsync(CancellationToken ct)
+    internal async Task RunTransferAsync(CancellationToken ct)
     {
         if (_from is not { } f || _to is not { } t)
         {
@@ -496,12 +496,6 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         ToCandidates.Clear();
     }
 
-    private void RaiseCandidates()
-    {
-        Populate(FromCandidates, FromText, _stations);
-        Populate(ToCandidates, ToText, _stations);
-    }
-
     private static void Populate(ObservableCollection<Station> target, string keyword, IStationRepository repository)
     {
         var hits = repository.Search(keyword);
@@ -687,7 +681,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     public string QueryButtonText => IsLoading ? _text.Get("按钮_查询中") : _text.Get("按钮_查询");
 
     /// <summary>更新站点码表（FR-18 的手动入口）。失败只回一句话，不动当前可用的码表。</summary>
-    private async Task UpdateStationsAsync(CancellationToken ct)
+    internal async Task UpdateStationsAsync(CancellationToken ct)
     {
         var r = await _stationUpdate.UpdateAsync(ct);
         // 更新成功也不换内存里的索引：换索引意味着把正在显示的结果、收藏解析全部重算一遍，
@@ -730,7 +724,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     }
 
     // ── 查询 ─────────────────────────────────────────────────
-    private async Task QueryAsync(CancellationToken ct)
+    internal async Task QueryAsync(CancellationToken ct)
     {
         if (!TryValidate(out var invalidMessage))
         {
@@ -843,7 +837,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     };
 
     // ── 经停站（FR-14）──────────────────────────────────────
-    private async Task LoadStopsAsync(CancellationToken ct)
+    internal async Task LoadStopsAsync(CancellationToken ct)
     {
         // 先固定住这一行：await 期间用户可能点了别的车次，迟到结果不能写到新的选中行上（FR-08）。
         if (Selected is not { } row) return;
@@ -912,7 +906,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         private set { if (Set(ref _extensionStatus, value)) Raise(nameof(ExtensionStatus)); }
     }
 
-    private async Task RunExtensionAsync(CancellationToken ct)
+    internal async Task RunExtensionAsync(CancellationToken ct)
     {
         if (Selected is null) return;
 
