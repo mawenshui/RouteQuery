@@ -9,6 +9,11 @@ namespace RouteQuery.Core.Model;
 /// </summary>
 /// <param name="Seats">席别余票。<see cref="SeatAvailability.Price"/> 一律为 null：官方不给。</param>
 /// <param name="DayDifference">跨几天到达（官方 <c>day_difference</c>，字符串数字）。</param>
+/// <param name="TravelDate">本段的乘车日期，<b>官方每段自带</b>（<c>start_train_date</c>，实测格式
+/// <c>yyyyMMdd</c>）。FR-15 展开该段经停时拿它当 <c>API-04</c> 的 <c>depart_date</c>。
+/// 为什么不从整程的 <c>train_date</c> 推：第二段的日期取决于第一段几点到达中转站、候车多久之后
+/// 是否跨零点——那是我们算出来的一天，不是官方说的一天。日期差一天，取回来的是另一天的时刻表，
+/// 而它看起来完全正常（NFR-18）。</param>
 public sealed record TransferLeg(
     string TrainCode,
     string TrainNo,
@@ -18,7 +23,8 @@ public sealed record TransferLeg(
     TimeOnly Arrival,
     TimeSpan Duration,
     int DayDifference,
-    IReadOnlyList<SeatAvailability> Seats);
+    IReadOnlyList<SeatAvailability> Seats,
+    DateOnly TravelDate);
 
 /// <summary>
 /// 一个中转方案：出发 → 中转 → 到达 的两段拼接。对应 FR-06 / FR-15。

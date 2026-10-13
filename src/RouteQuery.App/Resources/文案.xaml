@@ -26,6 +26,7 @@
     <sys:String x:Key="按钮_互换">⇅</sys:String>
     <sys:String x:Key="按钮_重试">重试</sys:String>
     <sys:String x:Key="按钮_看经停">经停站</sys:String>
+    <sys:String x:Key="按钮_收起经停">收起经停</sys:String>
     <sys:String x:Key="按钮_多买几站">多买几站</sys:String>
     <sys:String x:Key="按钮_开始扩展">开始查询</sys:String>
     <sys:String x:Key="按钮_跳官方">到 12306 查看</sys:String>

@@ -260,7 +260,13 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         try
         {
             var r = await _transfer.SearchAsync(f, t, TravelDate, ct);
-            foreach (var p in r.Plans) Transfers.Add(new TransferRowViewModel(p, _text));
+            foreach (var p in r.Plans)
+            {
+                var row = new TransferRowViewModel(p, _text);
+                // 展开两段各自取经停：命令挂在建行之后的这一步，因为行视图模型不该持有服务本身。
+                row.AttachLegToggles(LoadLegStopsAsync);
+                Transfers.Add(row);
+            }
 
             TransferStatus = string.Format(_text.Get("中转_结果数"), r.Plans.Count);
             if (r.DroppedForNegativeWait > 0 || r.DroppedForShape > 0)
@@ -911,6 +917,38 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         finally
         {
             Raise(nameof(HasStops), nameof(DetailHint));
+        }
+    }
+
+    /// <summary>FR-15：展开或收起中转方案的<b>某一段</b>。两段各持有自己的结果，所以这里只动传进来的那一段。</summary>
+    internal async Task LoadLegStopsAsync(TransferLegViewModel leg, CancellationToken ct)
+    {
+        if (leg.IsExpanded)
+        {
+            leg.Collapse();
+            return;                       // 已展开时这一击是收起，不该再花一次官方额度
+        }
+        if (leg.HasStops)
+        {
+            leg.Reveal();
+            return;                       // 收起过再点开：用手里已经有的一份
+        }
+
+        var m = leg.Model;
+        try
+        {
+            // 四个参数全取官方给这一段的字段。日期是段内的 start_train_date，
+            // 不是用户选的那个整程日期——第二段常常已经在中转站过完夜了，拿整程日期去问会取回另一天的表。
+            var route = await _stops.GetRouteAsync(m.TrainNo, m.From.Telecode, m.To.Telecode, m.TravelDate, ct);
+            leg.Show(route.Stops);
+        }
+        catch (QueryException ex)
+        {
+            leg.Fail(QueryErrorText(ex.Kind));     // 失败只写在这一段上：另一段的展开状态不受牵连
+        }
+        catch (RateLimitedException ex)
+        {
+            leg.Fail(RateLimitText(ex.Reason));
         }
     }
 

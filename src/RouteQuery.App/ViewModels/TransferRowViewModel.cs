@@ -7,6 +7,8 @@ namespace RouteQuery.App.ViewModels;
 /// 一个中转方案在界面上的一行。对应 FR-06 / FR-15。
 /// <para>刻意<b>不显示票价</b>，而是明说"官方未给出"：实测这个响应里没有任何价格字段，
 /// 留一个空白格会被读成"免费"或"0 元"，那是会让人做错决定的错（NFR-18）。</para>
+/// <para>两段各是一个 <see cref="TransferLegViewModel"/>，各自的展开状态与经停列表互不共享
+/// ——FR-15 的验收原话是"两段各自可展开、可折叠，互不干扰"。</para>
 /// </summary>
 public sealed class TransferRowViewModel(TransferPlan plan, ITextProvider text)
 {
@@ -29,8 +31,20 @@ public sealed class TransferRowViewModel(TransferPlan plan, ITextProvider text)
     public string TransferText { get; } = string.Format(text.Get("中转_换乘"),
         plan.WaitTime.TotalMinutes >= 60 ? $@"{(int)plan.WaitTime.TotalHours}小时{plan.WaitTime.Minutes}分" : $@"{plan.WaitMinutes}分钟");
 
-    public string FirstSeatsText { get; } = SeatTexts.Summary(plan.First.Seats, text);
-    public string SecondSeatsText { get; } = SeatTexts.Summary(plan.Second.Seats, text);
+    /// <summary>段一、段二。席别摘选与"看经停"都挂在段上，不再由这一行平铺两个字符串。</summary>
+    public IReadOnlyList<TransferLegViewModel> Legs { get; } =
+    [
+        new TransferLegViewModel(plan.First, text.Get("中转_段一"), text),
+        new TransferLegViewModel(plan.Second, text.Get("中转_段二"), text),
+    ];
+
+    /// <summary>把取经停的命令接到两段上。由 <see cref="MainViewModel"/> 在建行后调用——
+    /// 行视图模型不该持有服务，它只该知道"点这里要去取数"。</summary>
+    internal void AttachLegToggles(Func<TransferLegViewModel, CancellationToken, Task> loadStops)
+    {
+        foreach (var leg in Legs)
+            leg.AttachToggle(new Mvvm.AsyncCommand(ct => loadStops(leg, ct)));
+    }
 
     /// <summary>跨日标注。钟点是次日 06:30 还是当天 06:30，对"要不要在车上睡一晚"是两个决定，
     /// 所以这一格不能省；跨两天以上也不能糊成"次日"。</summary>

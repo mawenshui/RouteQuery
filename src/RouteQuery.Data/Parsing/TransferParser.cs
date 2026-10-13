@@ -121,9 +121,21 @@ public static class TransferParser
                 ReadClock(leg, "arrive_time"),
                 ReadDuration(leg, "lishi"),
                 ReadInt(leg, "day_difference"),
-                Seats(leg));
+                Seats(leg),
+                ReadLegDate(leg));
         }
         return legs;
+    }
+
+    /// <summary>段内日期用的是 <c>yyyyMMdd</c>，与方案层的 <c>yyyy-MM-dd</c> 不是同一种写法，
+    /// 所以这里必须显式按格式解析：宽松解析会把 <c>20261011</c> 读成 <c>2026-10-11</c> 之外的某一天，
+    /// 而 FR-15 拿它当 <c>API-04</c> 的 <c>depart_date</c>，错一天就取回另一天的时刻表。</summary>
+    private static DateOnly ReadLegDate(JsonElement leg)
+    {
+        var raw = Str(leg, "start_train_date");
+        return DateOnly.TryParseExact(raw, TransferFieldMap.LegDateFormat,
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            ? d : throw Drift("start_train_date", raw, "yyyyMMdd 的段内日期");
     }
 
     /// <summary>

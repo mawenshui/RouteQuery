@@ -62,6 +62,48 @@ public class TransferParserTests
     }
 
     [Fact]
+    public void 每段用的是这一段自己的乘车日期而不是整程那天()
+    {
+        // FR-15 展开该段经停时要把这个日期当 depart_date 发出去。第二段常常已经在中转站过夜，
+        // 拿整程的 train_date 顶替就会取回另一天的时刻表——而它看起来完全正常（NFR-18）。
+        var json = JsonNode.Parse(Samples.Json(Sample))!.AsObject();
+        var legs = json["data"]!["middleList"]!.AsArray()[0]!["fullList"]!.AsArray();
+        legs[1]!["start_train_date"] = "20261012";
+
+        var p = Parse(json.ToJsonString()).Plans[0];
+
+        Assert.Equal(new DateOnly(2026, 10, 11), p.First.TravelDate);
+        Assert.Equal(new DateOnly(2026, 10, 12), p.Second.TravelDate);
+        Assert.Equal(new DateOnly(2026, 10, 11), p.TravelDate);   // 整程日期仍然是官方给的那天，没被段内日期带跑
+    }
+
+    [Fact]
+    public void 段内日期写成带横杠的判结构变更而不是宽松接受()
+    {
+        // 官方在段里用 yyyyMMdd、在方案层用 yyyy-MM-dd。用宽松解析会把两种写法都吃掉，
+        // 于是哪天错了哪天没人知道——这里宁可直接失败。
+        var json = JsonNode.Parse(Samples.Json(Sample))!.AsObject();
+        json["data"]!["middleList"]!.AsArray()[0]!["fullList"]!.AsArray()[0]!["start_train_date"] = "2026-10-11";
+
+        var ex = Assert.Throws<QueryException>(() => Parse(json.ToJsonString()));
+
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+        Assert.Contains("start_train_date", ex.Message);
+    }
+
+    [Fact]
+    public void 段里缺日期时按形态异常丢弃该方案而不是补一个日期()
+    {
+        var json = JsonNode.Parse(Samples.Json(Sample))!.AsObject();
+        json["data"]!["middleList"]!.AsArray()[0]!["fullList"]!.AsArray()[0]!.AsObject().Remove("start_train_date");
+
+        var r = Parse(json.ToJsonString());
+
+        Assert.Equal(9, r.Plans.Count);
+        Assert.Equal(1, r.DroppedForShape);
+    }
+
+    [Fact]
     public void 官方没给票价所以一段都不许出现价格()
     {
         // 这个响应里根本没有 yp_info_new。任何一处出现非 null 的 Price 都说明我们在凭空造数。

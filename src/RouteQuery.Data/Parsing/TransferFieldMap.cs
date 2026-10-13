@@ -54,5 +54,12 @@ public static class TransferFieldMap
     [
         "station_train_code", "train_no", "from_station_telecode", "from_station_name",
         "to_station_telecode", "to_station_name", "start_time", "arrive_time", "lishi", "day_difference",
+        // 每段自己的乘车日期。FR-15 展开该段经停时必须拿它当 depart_date；缺了它就没有"这一段的哪天"，
+        // 只会有我们推算出来的哪天。
+        "start_train_date",
     ];
+
+    /// <summary>段内日期格式。<b>与方案层的 <c>train_date</c> 不是同一种写法</b>：
+    /// 方案层是 <c>yyyy-MM-dd</c>，段里是 <c>yyyyMMdd</c>。混用是本项目踩过的坑（SPEC-007 记过一次）。</summary>
+    public const string LegDateFormat = "yyyyMMdd";
 }

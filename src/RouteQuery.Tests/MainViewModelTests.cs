@@ -16,6 +16,8 @@ namespace RouteQuery.Tests;
 public class MainViewModelTests
 {
     private static readonly Station Beijing = new("北京南", "VNP", "beijingnan", "bjn", "1001", "北京");
+    /// <summary>段内日期。FR-15 展开该段经停时用的就是它，取自官方样本的 <c>start_train_date</c>。</summary>
+    private static readonly DateOnly LegDate = new(2026, 10, 11);
     private static readonly Station Nanjing = new("南京南", "NJH", "nanjingnan", "njj", "1301", "南京");
     private static readonly Station Shanghai = new("上海虹桥", "AOH", "shanghaihongqiao", "shq", "0201", "上海");
 
@@ -78,10 +80,17 @@ public class MainViewModelTests
         {
             public int Calls;
 
+            /// <summary>最后一次调用传进来的四个参数。FR-15 要看的就是"用的是哪一段的哪一天"。</summary>
+            public (string TrainNo, string From, string To, DateOnly Date)? Last { get; private set; }
+
+            public Exception? Throws { get; set; }
+
             public Task<TrainRoute> GetRouteAsync(string trainNo, string fromTelecode, string toTelecode,
                 DateOnly travelDate, CancellationToken ct = default)
             {
                 Calls++;
+                Last = (trainNo, fromTelecode, toTelecode, travelDate);
+                if (Throws is not null) throw Throws;
                 return Task.FromResult(new TrainRoute(trainNo, "G1", [
                     new StopDetail("01", Beijing.Name, null, new TimeSpan(7, 0, 0), "始发", true, false),
                     new StopDetail("07", Nanjing.Name, new TimeSpan(10, 20, 0), new TimeSpan(10, 24, 0), "4分钟", false, false),
@@ -523,14 +532,122 @@ public class MainViewModelTests
         Assert.Equal(1, h.Transfer.Calls);
     }
 
+    /// <summary>
+    /// 一个"两段坐不同车、且分两天开"的中转方案。日期故意不同：FR-15 的全部风险就在
+    /// "展开第二段时用的是哪一天"，两段同日的样本根本测不出拿错日期这件事。
+    /// </summary>
+    private static TransferPlan TwoTrainPlan() => new(
+        new TransferLeg("G25", "240000G250L", Beijing, Nanjing, new TimeOnly(17, 0), new TimeOnly(20, 14),
+            TimeSpan.FromMinutes(194), 0, [], LegDate),
+        new TransferLeg("G7402", "57000G74020", Nanjing, Shanghai, new TimeOnly(8, 30), new TimeOnly(9, 32),
+            TimeSpan.FromMinutes(62), 1, [], new DateOnly(2026, 10, 12)),
+        Nanjing, TimeSpan.FromMinutes(766), 766, TimeSpan.FromMinutes(1022), 1022, "17小时2分钟",
+        LegDate, new DateOnly(2026, 10, 12), false, false);
+
+    [Fact]
+    public async Task 展开第二段用的是第二段自己的日期而不是整程那天()
+    {
+        var h = new Harness();
+        h.Transfer.Result = new TransferQueryResult([TwoTrainPlan()], 0, 0);
+        h.Ready();
+        await h.Vm.RunTransferAsync(default);
+        var row = h.Vm.Transfers[0];
+
+        await h.Vm.LoadLegStopsAsync(row.Legs[1], default);
+
+        Assert.Equal(1, h.Stops.Calls);
+        var (trainNo, from, to, date) = h.Stops.Last!.Value;
+        Assert.Equal("57000G74020", trainNo);
+        Assert.Equal(Nanjing.Telecode, from);
+        Assert.Equal(Shanghai.Telecode, to);
+        Assert.Equal(new DateOnly(2026, 10, 12), date);   // 段内日期，不是用户选的那天
+        Assert.True(row.Legs[1].IsExpanded);
+        Assert.False(row.Legs[0].IsExpanded);             // 另一段一点没被牵连
+    }
+
+    [Fact]
+    public async Task 两段各自展开各自的经停互不覆盖()
+    {
+        // FR-15 验收原话"互不干扰"：比方案的人要把两段的经停对着读。
+        var h = new Harness();
+        h.Transfer.Result = new TransferQueryResult([TwoTrainPlan()], 0, 0);
+        h.Ready();
+        await h.Vm.RunTransferAsync(default);
+        var row = h.Vm.Transfers[0];
+
+        await h.Vm.LoadLegStopsAsync(row.Legs[0], default);
+        await h.Vm.LoadLegStopsAsync(row.Legs[1], default);
+
+        Assert.True(row.Legs[0].IsExpanded);
+        Assert.True(row.Legs[1].IsExpanded);
+        Assert.NotSame(row.Legs[0].Stops, row.Legs[1].Stops);
+        Assert.Equal(3, row.Legs[0].Stops.Count);
+        Assert.Equal(3, row.Legs[1].Stops.Count);
+        Assert.Equal(2, h.Stops.Calls);
+    }
+
+    [Fact]
+    public async Task 某段取不到时只有那一段报错且不显示空表()
+    {
+        var h = new Harness();
+        h.Transfer.Result = new TransferQueryResult([TwoTrainPlan()], 0, 0);
+        h.Ready();
+        await h.Vm.RunTransferAsync(default);
+        var row = h.Vm.Transfers[0];
+        h.Stops.Throws = QueryException.DataUnavailable("官方未返回该车次的经停信息");
+
+        await h.Vm.LoadLegStopsAsync(row.Legs[0], default);
+
+        Assert.False(row.Legs[0].IsExpanded);
+        Assert.Empty(row.Legs[0].Stops);              // 不是"展开了但空着"——空表会被读成"这趟只停两站"
+        Assert.Equal("错误_数据缺失", row.Legs[0].ErrorText);
+        Assert.False(row.Legs[1].IsExpanded);         // 另一段不受牵连
+        Assert.Null(row.Legs[1].ErrorText);
+    }
+
+    [Fact]
+    public async Task 收起再展开不再花第二次官方额度()
+    {
+        var h = new Harness();
+        h.Transfer.Result = new TransferQueryResult([TwoTrainPlan()], 0, 0);
+        h.Ready();
+        await h.Vm.RunTransferAsync(default);
+        var leg = h.Vm.Transfers[0].Legs[0];
+
+        await h.Vm.LoadLegStopsAsync(leg, default);   // 展开：取一次
+        await h.Vm.LoadLegStopsAsync(leg, default);   // 收起：不该请求
+        Assert.False(leg.IsExpanded);
+        Assert.Equal(1, h.Stops.Calls);
+
+        await h.Vm.LoadLegStopsAsync(leg, default);   // 再展开：用手里已有的那份
+        Assert.True(leg.IsExpanded);
+        Assert.Equal(1, h.Stops.Calls);
+        Assert.Equal(3, leg.Stops.Count);
+    }
+
+    [Fact]
+    public async Task 展开经停不该顺带再查一次余票()
+    {
+        // FR-14 验收③ 的段版：一次展开只该花一次钻取，不能顺手把整屏余票重查。
+        var h = new Harness();
+        h.Transfer.Result = new TransferQueryResult([TwoTrainPlan()], 0, 0);
+        h.Ready();
+        await h.Vm.RunTransferAsync(default);
+        var before = h.Query.Calls;
+
+        await h.Vm.LoadLegStopsAsync(h.Vm.Transfers[0].Legs[0], default);
+
+        Assert.Equal(before, h.Query.Calls);
+    }
+
     [Fact]
     public async Task 中转出数时按官方推荐顺序如实报数()
     {
         var plan = new TransferPlan(
             new TransferLeg("G25", "240000G250L", Beijing, Nanjing, new TimeOnly(17, 0), new TimeOnly(20, 14),
-                TimeSpan.FromMinutes(194), 0, []),
+                TimeSpan.FromMinutes(194), 0, [], LegDate),
             new TransferLeg("G25", "240000G250L", Nanjing, Shanghai, new TimeOnly(20, 16), new TimeOnly(21, 18),
-                TimeSpan.FromMinutes(62), 0, []),
+                TimeSpan.FromMinutes(62), 0, [], LegDate),
             Nanjing, TimeSpan.FromMinutes(2), 2, TimeSpan.FromMinutes(258), 258, "4小时18分钟",
             new DateOnly(2026, 10, 12), new DateOnly(2026, 10, 12), true, false);
 
