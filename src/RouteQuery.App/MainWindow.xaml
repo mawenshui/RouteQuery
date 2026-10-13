@@ -104,7 +104,19 @@
                 <TextBox x:Name="FromBox" Padding="8,6" VerticalContentAlignment="Center"
                          Text="{Binding FromText, UpdateSourceTrigger=PropertyChanged}"
                          Tag="{DynamicResource 标签_出发站}"
-                         PreviewKeyDown="FromBox_PreviewKeyDown" LostFocus="Box_LostFocus"/>
+                         PreviewKeyDown="FromBox_PreviewKeyDown" LostFocus="Box_LostFocus">
+                    <!-- FR-04 要求"输入框标红"：光说"哪个框不对"不够，眼睛要能直接落到框上 -->
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FromInvalid}" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource 笔刷_错误}"/>
+                                    <Setter Property="BorderThickness" Value="2"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
                 <Popup PlacementTarget="{Binding ElementName=FromBox}" Placement="Bottom" StaysOpen="False"
                        IsOpen="{Binding FromCandidates.Count, Mode=OneWay, Converter={StaticResource CountBool}}">
                     <ListBox x:Name="FromList" Width="230" MaxHeight="280" DisplayMemberPath="Name"
@@ -120,7 +132,18 @@
                 <TextBox x:Name="ToBox" Padding="8,6" VerticalContentAlignment="Center"
                          Text="{Binding ToText, UpdateSourceTrigger=PropertyChanged}"
                          Tag="{DynamicResource 标签_到达站}"
-                         PreviewKeyDown="ToBox_PreviewKeyDown" LostFocus="Box_LostFocus"/>
+                         PreviewKeyDown="ToBox_PreviewKeyDown" LostFocus="Box_LostFocus">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ToInvalid}" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource 笔刷_错误}"/>
+                                    <Setter Property="BorderThickness" Value="2"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
                 <Popup PlacementTarget="{Binding ElementName=ToBox}" Placement="Bottom" StaysOpen="False"
                        IsOpen="{Binding ToCandidates.Count, Mode=OneWay, Converter={StaticResource CountBool}}">
                     <ListBox x:Name="ToList" Width="230" MaxHeight="280" DisplayMemberPath="Name"

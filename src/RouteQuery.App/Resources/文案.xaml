@@ -52,7 +52,9 @@
     <sys:String x:Key="状态_剩余额度">今日还可查询 {0} 次</sys:String>
 
     <!-- 错误文案：一类一条，措辞必须让人知道下一步做什么 -->
-    <sys:String x:Key="错误_输入无效">请先把出发站和到达站都选出来，两站不能相同。</sys:String>
+    <sys:String x:Key="错误_未选出发站">请先选定出发站：输入站名后从联想列表里点一条。</sys:String>
+    <sys:String x:Key="错误_未选到达站">请先选定到达站：输入站名后从联想列表里点一条。</sys:String>
+    <sys:String x:Key="错误_两站相同">出发站与到达站是同一个站，请至少换掉一个。</sys:String>
     <sys:String x:Key="错误_日期越界">这个日期不在可查范围内，请重新选。</sys:String>
     <sys:String x:Key="错误_网络不可用">连不上网络。检查一下这台机器的网络，然后点重试。</sys:String>
     <sys:String x:Key="错误_超时">官方响应有点慢，这次查询先取消了。可以稍后再试。</sys:String>

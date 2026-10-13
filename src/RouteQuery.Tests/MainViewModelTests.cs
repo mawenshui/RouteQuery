@@ -306,6 +306,54 @@ public class MainViewModelTests
         Assert.Equal(0, h.Query.Calls);
         Assert.Equal(ViewState.Error, h.Vm.State);
         Assert.False(h.Vm.CanRetry);   // 这种错重试没有意义，用户要做的是选站
+
+        // FR-04 给每种非法输入写了各自的说法，还要"输入框标红"。共用一句"输入无效"时
+        // 用户读完仍然不知道动哪个框，所以这三条断言守的是措辞而不是流程。
+        Assert.Equal("错误_未选出发站", h.Vm.ErrorText);
+        Assert.True(h.Vm.FromInvalid);
+        Assert.True(h.Vm.ToInvalid);   // 两个都空，两个都该标红
+    }
+
+    [Fact]
+    public async Task 只缺到达站时说的是到达站而不是笼统一句()
+    {
+        var h = new Harness();
+        h.Vm.FromPick = Beijing;
+
+        await h.Vm.QueryAsync(default);
+
+        Assert.Equal(0, h.Query.Calls);
+        Assert.Equal("错误_未选到达站", h.Vm.ErrorText);
+        Assert.False(h.Vm.FromInvalid);
+        Assert.True(h.Vm.ToInvalid);
+    }
+
+    [Fact]
+    public async Task 红框在用户改选之后消失()
+    {
+        // 红框的意义是"这里需要你动一下"。选完还红着，就是在指责一个已经修好的东西。
+        var h = new Harness();
+        await h.Vm.QueryAsync(default);
+        Assert.True(h.Vm.FromInvalid);
+
+        h.Vm.FromPick = Beijing;
+        Assert.False(h.Vm.FromInvalid);
+
+        h.Vm.ToPick = Shanghai;
+        Assert.False(h.Vm.ToInvalid);
+    }
+
+    [Fact]
+    public async Task 中转与收藏说的是同一句()
+    {
+        // 三个入口（直达、中转、收藏）各自校验一次。措辞分叉的话，用户会以为有三种不同的毛病。
+        var h = new Harness();
+
+        await h.Vm.RunTransferAsync(default);
+        Assert.Equal("错误_未选出发站", h.Vm.TransferStatus);
+
+        h.Vm.SaveCurrentRoute();
+        Assert.Equal("错误_未选出发站", h.Vm.BookStatus);
     }
 
     [Fact]
@@ -320,6 +368,10 @@ public class MainViewModelTests
 
         Assert.Equal(0, h.Query.Calls);
         Assert.Equal(ViewState.Error, h.Vm.State);
+        Assert.Equal("错误_两站相同", h.Vm.ErrorText);
+        // 两个框一起红：问题在"这一对"上，只红一个会把人引向错误的那个框。
+        Assert.True(h.Vm.FromInvalid);
+        Assert.True(h.Vm.ToInvalid);
     }
 
     [Fact]

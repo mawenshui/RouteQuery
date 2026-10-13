@@ -33,6 +33,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private Station? _toPick;
     private string _fromText = string.Empty;
     private string _toText = string.Empty;
+    private bool _fromInvalid;
+    private bool _toInvalid;
     private DateOnly _travelDate = DateOnly.FromDateTime(DateTime.Today);
     private ViewState _state = ViewState.Empty;
     private string _statusText;
@@ -157,11 +159,12 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     /// <summary>把当前条件存成收藏。名字用"出发→到达"，够认就行，不做重名编辑。</summary>
     public void SaveCurrentRoute()
     {
-        if (_from is not { } f || _to is not { } t)
+        if (MissingStationMessage() is { } problem)
         {
-            BookStatus = _text.Get("错误_输入无效");
+            BookStatus = problem;
             return;
         }
+        var (f, t) = (_from!, _to!);   // 上面那条判断返回 null 就等于两站都在
 
         BookStatus = _book.Add(new SavedRoute($"{f.Name}→{t.Name}", f.Telecode, t.Telecode))
             ? string.Format(_text.Get("收藏_已存"), f.Name, t.Name)
@@ -238,11 +241,12 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
 
     internal async Task RunTransferAsync(CancellationToken ct)
     {
-        if (_from is not { } f || _to is not { } t)
+        if (MissingStationMessage() is { } problem)
         {
-            TransferStatus = _text.Get("错误_输入无效");
+            TransferStatus = problem;
             return;
         }
+        var (f, t) = (_from!, _to!);
         if (!HasLoginSession)
         {
             // 未登录是引导态不是错误态（DEC-08）：说清"不登录能做什么、这一项为什么不行"。
@@ -393,6 +397,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
             {
                 _from = null;
                 _fromPick = null;
+                FromInvalid = false;   // 用户已经在动这个框了，红框就该消失（FR-04）
                 Raise(nameof(FromPick));
                 Populate(FromCandidates, value, _stations);
             }
@@ -408,10 +413,25 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
             {
                 _to = null;
                 _toPick = null;
+                ToInvalid = false;
                 Raise(nameof(ToPick));
                 Populate(ToCandidates, value, _stations);
             }
         }
+    }
+
+    /// <summary>校验没过时标红出发站输入框（FR-04 的"输入框标红"）。</summary>
+    public bool FromInvalid
+    {
+        get => _fromInvalid;
+        private set { if (Set(ref _fromInvalid, value)) Raise(nameof(FromInvalid)); }
+    }
+
+    /// <summary>校验没过时标红到达站输入框（FR-04）。</summary>
+    public bool ToInvalid
+    {
+        get => _toInvalid;
+        private set { if (Set(ref _toInvalid, value)) Raise(nameof(ToInvalid)); }
     }
 
     public ObservableCollection<Station> FromCandidates { get; } = [];
@@ -449,6 +469,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     {
         _from = s;
         _fromText = s.Name;
+        FromInvalid = false;
         Raise(nameof(FromText));
         FromCandidates.Clear();
     }
@@ -457,6 +478,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     {
         _to = s;
         _toText = s.Name;
+        ToInvalid = false;
         Raise(nameof(ToText));
         ToCandidates.Clear();
     }
@@ -781,22 +803,29 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         }
     }
 
-    /// <summary>本地校验全部在网络之前（FR-04：非法输入时官方请求发出次数必须为 0）。</summary>
+    /// <summary>本地校验全部在网络之前（FR-04：非法输入时官方请求发出次数必须为 0）。
+    /// <para>FR-04 的校验表给每种非法输入写了**各自**的说法，并要求"输入框标红"。以前三种情况共用
+    /// 一句"请先把出发站和到达站都选出来"，用户看完仍不知道是哪个框没填，所以这里按条拆开。</para></summary>
     private bool TryValidate(out string message)
     {
         if (!_stations.IsLoaded)
         {
+            FromInvalid = false;
+            ToInvalid = false;
             message = _text.Get("错误_站点数据缺失");
             return false;
         }
-        if (_from is null || _to is null)
+        if (MissingStationMessage() is { } missing)
         {
-            message = _text.Get("错误_输入无效");
+            message = missing;
             return false;
         }
-        if (string.Equals(_from.Telecode, _to.Telecode, StringComparison.Ordinal))
+        if (string.Equals(_from!.Telecode, _to!.Telecode, StringComparison.Ordinal))
         {
-            message = _text.Get("错误_输入无效");
+            // 两站相同是"这一对"的问题，所以两个框一起标红；只标一个会把人引向错误的那个框。
+            FromInvalid = true;
+            ToInvalid = true;
+            message = _text.Get("错误_两站相同");
             return false;
         }
         if (!PresaleWindow.IsSelectable(TravelDate, _today))
@@ -807,6 +836,17 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
 
         message = string.Empty;
         return true;
+    }
+
+    /// <summary>两站没选齐时指名到具体哪一个框（FR-04 要求"输入框标红 + 说清是哪个站"）。
+    /// 直达、中转、收藏三个入口共用这一条判断，免得同一个错误在三个地方长出三种说法。</summary>
+    private string? MissingStationMessage()
+    {
+        FromInvalid = _from is null;
+        ToInvalid = _to is null;
+
+        if (_from is null) return _text.Get("错误_未选出发站");
+        return _to is null ? _text.Get("错误_未选到达站") : null;
     }
 
     private void ShowError(string text, bool retry)
