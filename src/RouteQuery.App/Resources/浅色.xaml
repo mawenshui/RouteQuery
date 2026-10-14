@@ -13,90 +13,90 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ── 纯色：文字与语义状态 ── -->
-    <SolidColorBrush x:Key="笔刷_文字">#1A1C1F</SolidColorBrush>
-    <SolidColorBrush x:Key="笔刷_次级文字">#5A6270</SolidColorBrush>
-    <SolidColorBrush x:Key="笔刷_有票">#A34A15</SolidColorBrush>
-    <SolidColorBrush x:Key="笔刷_成功">#155C31</SolidColorBrush>
-    <SolidColorBrush x:Key="笔刷_错误">#B3261E</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_文字">#14161A</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_次级文字">#414854</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_有票">#9A4413</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_成功">#12552D</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_错误">#A81F18</SolidColorBrush>
     <SolidColorBrush x:Key="笔刷_底上文字">#FFF3F2</SolidColorBrush>
 
     <!-- 分隔线：不承载信息，所以不受 3:1 约束；受约束的是下面那个"控件边界" -->
-    <SolidColorBrush x:Key="笔刷_边框">#E0E4EA</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_边框">#B9C4D2</SolidColorBrush>
     <!-- 输入框、按钮、下拉框的轮廓。WCAG 1.4.11 要求非文本的可视边界 ≥3:1，
          低了就等于"看不出这是个可以填的地方"。 -->
-    <SolidColorBrush x:Key="笔刷_控件边界">#6B7686</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_控件边界">#4E5867</SolidColorBrush>
 
     <!-- 落在"系统仍自画的浅色面"上的文字色。深色档下这个值不变（见深色色板的说明）。 -->
     <SolidColorBrush x:Key="笔刷_系统底上文字">#1F1F1F</SolidColorBrush>
 
     <!-- 只剩这一个纯色底键：进度条的轨道要垫在渐变填充下面，轨道自身再渐变会读出"两段进度"的错觉。 -->
-    <SolidColorBrush x:Key="笔刷_徽标底">#F0F0F0</SolidColorBrush>
+    <SolidColorBrush x:Key="笔刷_徽标底">#DCE1E8</SolidColorBrush>
 
     <LinearGradientBrush x:Key="渐变_进度填充" StartPoint="0,0" EndPoint="0,1">
         <GradientStop Color="#2A8C50" Offset="0"/>
-        <GradientStop Color="#155C31" Offset="1"/>
+        <GradientStop Color="#12552D" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_窗口底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#F3F6FA" Offset="0"/>
-        <GradientStop Color="#EAF0F7" Offset="1"/>
+        <GradientStop Color="#D9E1EC" Offset="0"/>
+        <GradientStop Color="#C3D0E2" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_内容底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#FFFFFF" Offset="0"/>
-        <GradientStop Color="#FAFCFE" Offset="1"/>
+        <GradientStop Color="#F2F6FB" Offset="0"/>
+        <GradientStop Color="#E2EAF4" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_行底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#FFFFFF" Offset="0"/>
-        <GradientStop Color="#F9FBFD" Offset="1"/>
+        <GradientStop Color="#F2F5FA" Offset="0"/>
+        <GradientStop Color="#EDF2F9" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_徽标底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#F1F4F8" Offset="0"/>
-        <GradientStop Color="#E8EDF4" Offset="1"/>
+        <GradientStop Color="#E2E8F1" Offset="0"/>
+        <GradientStop Color="#CFD9E7" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_输入底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#FFFFFF" Offset="0"/>
-        <GradientStop Color="#F7F9FC" Offset="1"/>
+        <GradientStop Color="#FBFDFF" Offset="0"/>
+        <GradientStop Color="#E9F0F8" Offset="1"/>
     </LinearGradientBrush>
 
     <!-- 弹层（下拉、日历）自己一层：它浮在窗口上，越往里越亮才读得出"这是一层新的面" -->
     <LinearGradientBrush x:Key="渐变_弹层底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#FFFFFF" Offset="0"/>
-        <GradientStop Color="#F8FAFD" Offset="1"/>
+        <GradientStop Color="#F5F8FC" Offset="0"/>
+        <GradientStop Color="#E6EDF6" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_页签底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#EDF1F7" Offset="0"/>
-        <GradientStop Color="#E4EAF2" Offset="1"/>
+        <GradientStop Color="#E4EBF4" Offset="0"/>
+        <GradientStop Color="#D2DDEB" Offset="1"/>
     </LinearGradientBrush>
 
     <!-- 带色相的只有三处：可点击、当前选中、错误。中性灰渐变一律表示"不可点"。 -->
     <LinearGradientBrush x:Key="渐变_页签选中底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#F5F9FF" Offset="0"/>
-        <GradientStop Color="#E7F0FB" Offset="1"/>
+        <GradientStop Color="#F8FBFF" Offset="0"/>
+        <GradientStop Color="#DCE8F8" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_按钮底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#F2F7FF" Offset="0"/>
-        <GradientStop Color="#E2EDFA" Offset="1"/>
+        <GradientStop Color="#D7E4F7" Offset="0"/>
+        <GradientStop Color="#B4CCEE" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_按钮按下底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#DCEBFB" Offset="0"/>
-        <GradientStop Color="#CBDDF3" Offset="1"/>
+        <GradientStop Color="#BDD3EE" Offset="0"/>
+        <GradientStop Color="#9BB9DD" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_提醒底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#FFF7E9" Offset="0"/>
-        <GradientStop Color="#FFEEDA" Offset="1"/>
+        <GradientStop Color="#FBE7C4" Offset="0"/>
+        <GradientStop Color="#F4D79E" Offset="1"/>
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="渐变_错误底" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#B3261E" Offset="0"/>
-        <GradientStop Color="#8C1F18" Offset="1"/>
+        <GradientStop Color="#A81F18" Offset="0"/>
+        <GradientStop Color="#7E1710" Offset="1"/>
     </LinearGradientBrush>
 
 </ResourceDictionary>

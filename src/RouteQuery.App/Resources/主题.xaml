@@ -214,16 +214,21 @@
                                      VerticalAlignment="Center" Background="Transparent" BorderThickness="0"
                                      Foreground="{DynamicResource 笔刷_文字}" CaretBrush="{DynamicResource 笔刷_文字}"
                                      Visibility="Hidden"/>
-                            <ToggleButton Grid.Column="1" Focusable="False" ClickMode="Press"
+                            <ToggleButton x:Name="开关" Grid.Column="0" Grid.ColumnSpan="2"
+                                          Focusable="False" ClickMode="Press"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border x:Name="箭头底" Background="Transparent" CornerRadius="0,3,3,0">
-                                            <Path Style="{StaticResource 下拉箭头}"/>
+                                        <!-- 热区横跨整个控件（FR-39）：只让 22 像素的箭头可点，
+                                             用户每次都要瞄准它，而"这一整块都是下拉框"才是他们的直觉。
+                                             可编辑模式由触发器收回箭头那一格，否则打字点不进去。 -->
+                                        <Border x:Name="底" Background="Transparent" CornerRadius="3">
+                                            <Path Style="{StaticResource 下拉箭头}"
+                                                  HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,9,0"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="箭头底" Property="Background" Value="{DynamicResource 渐变_徽标底}"/>
+                                                <Setter TargetName="底" Property="Background" Value="{DynamicResource 渐变_页签底}"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -245,6 +250,9 @@
                         <Trigger Property="IsEditable" Value="True">
                             <Setter TargetName="选中项" Property="Visibility" Value="Collapsed"/>
                             <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                            <!-- 可编辑时热区退回箭头那一格：盖住文字区就等于不能打字了 -->
+                            <Setter TargetName="开关" Property="Grid.Column" Value="1"/>
+                            <Setter TargetName="开关" Property="Grid.ColumnSpan" Value="1"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="外框" Property="BorderBrush" Value="{DynamicResource 笔刷_文字}"/>
@@ -541,56 +549,6 @@
         </Setter>
     </Style>
 
-    <Style TargetType="Expander">
-        <Setter Property="Foreground" Value="{DynamicResource 笔刷_文字}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Expander">
-                    <Border Background="{DynamicResource 渐变_内容底}" BorderBrush="{DynamicResource 笔刷_控件边界}"
-                            BorderThickness="1" CornerRadius="3">
-                        <DockPanel>
-                            <ToggleButton DockPanel.Dock="Top" Cursor="Arrow" Focusable="False"
-                                          Content="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}"
-                                          IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                                <ToggleButton.Template>
-                                    <ControlTemplate TargetType="ToggleButton">
-                                        <Border x:Name="条" Background="{DynamicResource 渐变_徽标底}"
-                                                BorderBrush="{DynamicResource 笔刷_边框}" BorderThickness="0,0,0,1"
-                                                CornerRadius="3,3,0,0">
-                                            <DockPanel LastChildFill="True" Margin="8,5">
-                                                <!-- 折叠与展开换 Data 而不是转角度：RotateTransform 不是
-                                                     FrameworkElement，Trigger 的 TargetName 指不到它。 -->
-                                                <Path x:Name="箭头" DockPanel.Dock="Left" Style="{StaticResource 下拉箭头}"
-                                                      Margin="0,1,8,0" Data="M 0 0 L 8 0 L 4 5 Z"/>
-                                                <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
-                                            </DockPanel>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsChecked" Value="True">
-                                                <Setter TargetName="箭头" Property="Data" Value="M 0 5 L 8 5 L 4 0 Z"/>
-                                            </Trigger>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="条" Property="Background" Value="{DynamicResource 渐变_页签选中底}"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </ToggleButton.Template>
-                            </ToggleButton>
-                            <Border x:Name="内容" Visibility="Collapsed">
-                                <ContentPresenter Margin="10,6"/>
-                            </Border>
-                        </DockPanel>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsExpanded" Value="True">
-                            <Setter TargetName="内容" Property="Visibility" Value="Visible"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
     <Style TargetType="ProgressBar">
         <Setter Property="Foreground" Value="{DynamicResource 渐变_进度填充}"/>
         <Setter Property="Background" Value="{DynamicResource 笔刷_徽标底}"/>
@@ -605,10 +563,169 @@
 
     <Style TargetType="Menu">
         <Setter Property="Background" Value="{DynamicResource 渐变_徽标底}"/>
+        <Setter Property="Foreground" Value="{DynamicResource 笔刷_文字}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource 笔刷_边框}"/>
+    </Style>
+
+    <!-- ══ 菜单项（FR-41 / FR-44）══
+         必须自带模板：系统那份的弹层底色走 SystemColors，深色档下会变成"深字落白底"的白块，
+         正是 K-10 那一类问题。这里一个模板吃四种角色（顶栏项、顶栏带子菜单、子菜单项、子菜单带下一级），
+         用 Role 触发器切换，因为本应用的菜单只有两层，写四份模板不值得。 -->
+    <!-- 菜单里的分隔线：系统默认那条是浅灰白，落在深色弹层上就是一道亮线。 -->
+    <Style TargetType="Separator">
+        <Setter Property="Background" Value="{DynamicResource 笔刷_边框}"/>
+        <Setter Property="Margin" Value="4,3"/>
     </Style>
 
     <Style TargetType="MenuItem">
         <Setter Property="Foreground" Value="{DynamicResource 笔刷_文字}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="底" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0"
+                            CornerRadius="3" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="14"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- 勾选式菜单项（视图菜单）：勾在文字左边，不靠颜色单独表达状态 -->
+                            <TextBlock x:Name="勾" Grid.Column="0" Text="✓" MinWidth="14"
+                                       Visibility="Collapsed" FontWeight="Bold"
+                                       Foreground="{DynamicResource 笔刷_成功}"
+                                       VerticalAlignment="Center" Margin="2,0,2,0"/>
+                            <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True"
+                                              VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                            <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}"
+                                       Margin="12,0,0,0" VerticalAlignment="Center"
+                                       Style="{StaticResource HintText}"/>
+                            <Path x:Name="箭头" Grid.Column="3" Style="{StaticResource 下拉箭头}"
+                                  Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
+                                   Focusable="False" PopupAnimation="None"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                                <Border Background="{DynamicResource 渐变_弹层底}"
+                                        BorderBrush="{DynamicResource 笔刷_控件边界}" BorderThickness="1"
+                                        Padding="2" MinWidth="180">
+                                    <ItemsPresenter/>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Role" Value="TopLevelHeader">
+                            <Setter TargetName="箭头" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="勾" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <Trigger Property="Role" Value="SubmenuItem">
+                            <Setter Property="MinHeight" Value="26"/>
+                        </Trigger>
+                        <Trigger Property="Role" Value="SubmenuHeader">
+                            <Setter TargetName="箭头" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="PART_Popup" Property="Placement" Value="Right"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="Role" Value="SubmenuItem"/>
+                                <Condition Property="IsChecked" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="勾" Property="Visibility" Value="Visible"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="底" Property="Background" Value="{DynamicResource 渐变_页签选中底}"/>
+                        </Trigger>
+                        <Trigger Property="IsSubmenuOpen" Value="True">
+                            <Setter TargetName="底" Property="Background" Value="{DynamicResource 渐变_页签选中底}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource 笔刷_次级文字}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
+
+    <!-- ══ 分隔器（FR-40）══
+         六像素的透明热区 + 一条分隔线，悬停时才浮出三个小点。
+         一根永远看得见的小把手会把"可拖"变成视觉噪音，而看不见把手又等于不能拖——
+         所以常态只留线（它本来也是两块区域的分界），悬停再给把手。 -->
+    <Style TargetType="GridSplitter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="ShowsPreview" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Border x:Name="竖线" Width="1" HorizontalAlignment="Center"
+                                Background="{DynamicResource 笔刷_边框}"/>
+                        <Border x:Name="横线" Height="1" VerticalAlignment="Center"
+                                Background="{DynamicResource 笔刷_边框}" Visibility="Collapsed"/>
+                        <StackPanel x:Name="柄" Orientation="Horizontal"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+                            <Border Width="3" Height="3" CornerRadius="2" Background="{DynamicResource 笔刷_控件边界}" Margin="0,1"/>
+                            <Border Width="3" Height="3" CornerRadius="2" Background="{DynamicResource 笔刷_控件边界}" Margin="0,1"/>
+                            <Border Width="3" Height="3" CornerRadius="2" Background="{DynamicResource 笔刷_控件边界}" Margin="0,1"/>
+                        </StackPanel>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="ResizeDirection" Value="Rows">
+                            <Setter TargetName="竖线" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="横线" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="柄" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="竖线" Property="Background" Value="{DynamicResource 笔刷_控件边界}"/>
+                            <Setter TargetName="横线" Property="Background" Value="{DynamicResource 笔刷_控件边界}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ══ 列表表头（FR-42）══
+         表头那一行画在 ScrollViewer 外面（见主窗口的列表模板），所以这里的单元格是普通控件：
+         不可排序的列用 表头文字，可排序的列用 表头按钮——两者字号字重一致，
+         否则用户会以为能点的那几列是另一种东西。 -->
+    <Style x:Key="表头文字" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource 笔刷_次级文字}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="9,6"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <Style x:Key="表头按钮" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource 笔刷_次级文字}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="ToolTip" Value="{DynamicResource 表头_可排序提示}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="底" Background="Transparent" CornerRadius="2" Padding="9,6">
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="底" Property="Background" Value="{DynamicResource 渐变_页签底}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource 笔刷_文字}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="底" Property="Background" Value="{DynamicResource 渐变_页签选中底}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 
 </ResourceDictionary>

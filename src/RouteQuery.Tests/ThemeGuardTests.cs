@@ -19,6 +19,64 @@ public class ThemeGuardTests
     // 那块底会静默落回系统默认色，运行时不报错（2026-10-12 深色档已经栽过一次）。
     private static readonly Regex BrushUse = new(@"(?:笔刷|渐变)_[\w一-鿿]+");
 
+    /// <summary>
+    /// 界面里出现的每一种控件类型，都必须在样式字典里有一条隐式样式。
+    /// <para>为什么要有这一条：FR-44 说"所有控件都要有好看的样式"，而这句话最容易的实现方式是
+    /// 只改当时想到的那几个控件。漏掉的那个不会报错——它会带着系统默认外观落在皮肤上，
+    /// 深色档下就是一块白底（K-10 当年就是这么来的）。</para>
+    /// <para>它判的是"有没有样式"，不是"样式好不好看"——后者仍然只能靠眼睛。</para>
+    /// </summary>
+    [Fact]
+    public void 界面用到的每个控件类型都要在样式字典里有隐式样式()
+    {
+        var styled = System.Text.RegularExpressions.Regex
+            .Matches(File.ReadAllText(Path.Combine(AppDir, "Resources", "主题.xaml")), @"<Style TargetType=""([A-Za-z]+)""")
+            .Select(m => m.Groups[1].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var path in MarkupFiles())
+        {
+            var file = Path.GetFileName(path);
+            if (IsPalette(path) || file == "主题.xaml") continue;
+            foreach (var tag in ElementTags(File.ReadAllText(path)))
+            {
+                var type = ResolveControl(tag);
+                if (type is null || NoStyleNeeded.Contains(type) || styled.Contains(type)) continue;
+                missing.Add($"{Path.GetRelativePath(Samples.RepoRoot, path).Replace('\\', '/')}：{tag}");
+            }
+        }
+
+        Assert.Empty(missing);
+    }
+
+    /// <summary>不需要皮肤的结构件，逐个给理由——空名单会让这条守卫变成"以后再加个理由就行"的口子。</summary>
+    private static readonly HashSet<string> NoStyleNeeded =
+        new(StringComparer.Ordinal)
+        {
+            nameof(System.Windows.Controls.ScrollViewer),
+            nameof(System.Windows.Controls.ItemsControl),
+        };
+    //  ScrollViewer：它自己没有任何可见像素，可见的部分是里面的滚动条与外层底色，两者都已换过。
+    //  ItemsControl：同上，它只负责把条目排下去，每个条目长什么样由 ItemTemplate 决定，
+    //                 而模板里的东西（文本、按钮）都在本条守卫的管辖范围内。
+
+    private static IEnumerable<string> ElementTags(string text) =>
+        System.Text.RegularExpressions.Regex.Matches(text, @"<([A-Za-z][A-Za-z0-9]*)(?=[\s>/])")
+            .Select(m => m.Groups[1].Value).Distinct(StringComparer.Ordinal);
+
+    /// <summary>标签名 → WPF 控件类型名。不是 Control 的子类（Grid/Border/TextBlock 等）返回 null：
+    /// 它们没有"外观样式"这回事，颜色靠继承来的 Foreground 与自己的 Background。</summary>
+    private static string? ResolveControl(string tag)
+    {
+        foreach (var ns in new[] { "System.Windows.Controls", "System.Windows.Controls.Primitives" })
+        {
+            var t = Type.GetType($"{ns}.{tag}, PresentationFramework", throwOnError: false);
+            if (t is not null && typeof(System.Windows.Controls.Control).IsAssignableFrom(t)) return t.Name;
+        }
+        return null;
+    }
+
     [Fact]
     public void 界面文件里不许出现任何色值()
     {

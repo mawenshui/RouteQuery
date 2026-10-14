@@ -21,12 +21,98 @@
             </Window.Resources>
 
     <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="{DynamicResource 渐变_徽标底}"
+                BorderBrush="{DynamicResource 笔刷_控件边界}" BorderThickness="1" CornerRadius="4"
+                Padding="4,2" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Menu Grid.Column="0" Background="Transparent" VerticalAlignment="Center">
+                    <MenuItem Header="{DynamicResource 菜单_文件}">
+                        <MenuItem Header="{DynamicResource 菜单_更新码表}" Click="UpdateStations_Click"/>
+                        <MenuItem Header="{DynamicResource 菜单_清空数据}" Click="Settings_Click"/>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource 菜单_退出}" Click="Exit_Click"/>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource 菜单_视图}">
+                        <MenuItem Header="{DynamicResource 视图_侧栏}" IsCheckable="True"
+                                  IsChecked="{Binding ShowSidebar}"/>
+                        <MenuItem Header="{DynamicResource 视图_筛选栏}" IsCheckable="True"
+                                  IsChecked="{Binding ShowFilters}"/>
+                        <MenuItem Header="{DynamicResource 视图_详情区}" IsCheckable="True"
+                                  IsChecked="{Binding ShowDetail}"/>
+                        <MenuItem Header="{DynamicResource 视图_信息条}" IsCheckable="True"
+                                  IsChecked="{Binding ShowInfoBar}"/>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource 菜单_主题}">
+                        <MenuItem Header="{DynamicResource 主题_跟随系统}" IsCheckable="True"
+                                  IsChecked="{Binding ThemeFollows, Mode=OneWay}" Click="Theme_Click" Tag="跟随系统"/>
+                        <MenuItem Header="{DynamicResource 主题_浅色}" IsCheckable="True"
+                                  IsChecked="{Binding ThemeLight, Mode=OneWay}" Click="Theme_Click" Tag="浅色"/>
+                        <MenuItem Header="{DynamicResource 主题_深色}" IsCheckable="True"
+                                  IsChecked="{Binding ThemeDark, Mode=OneWay}" Click="Theme_Click" Tag="深色"/>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource 菜单_帮助}">
+                        <MenuItem Header="{DynamicResource 菜单_设置}" Click="Settings_Click"/>
+                        <MenuItem Header="{DynamicResource 菜单_发布页}" Click="OpenRelease_Click"/>
+                        <MenuItem Header="{DynamicResource 菜单_再看声明}" Click="ShowStatement_Click"/>
+                    </MenuItem>
+                </Menu>
+
+                <!-- 信息条：站点日期 + 更新入口 + 状态 + 额度 + 弱提示 + 声明 + 设置。
+                     额度必须常驻（FR-43 把消耗从"点按钮"挪到了"点行"，用户要看得见自己在花什么）。 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0"
+                            Visibility="{Binding ShowInfoBar, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{DynamicResource 提示_站点数据}" Style="{StaticResource HintText}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding StationDataDate, Mode=OneWay}" VerticalAlignment="Center"
+                               FontWeight="SemiBold" Margin="5,0,0,0"/>
+                    <Button Content="{DynamicResource 菜单_更新码表}" FontSize="11" Padding="8,1" Margin="8,0,0,0"
+                            VerticalAlignment="Center" Click="UpdateStations_Click"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="2" Text="{Binding StatusText}" Style="{StaticResource HintText}"
+                           VerticalAlignment="Center" Margin="16,0,8,0" TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding ShowInfoBar, Converter={StaticResource BoolVis}}"/>
+
+                <TextBlock Grid.Column="3" Text="{Binding DailyRemainingText}" VerticalAlignment="Center"
+                           Margin="8,0" FontSize="11"
+                           Visibility="{Binding ShowInfoBar, Converter={StaticResource BoolVis}}"/>
+
+                <Button Grid.Column="4" Content="{Binding UpdateNote}" Padding="10,2" Margin="8,0,0,0"
+                        FontSize="11" Foreground="{DynamicResource 笔刷_成功}" Background="Transparent" BorderThickness="0"
+                        Click="OpenRelease_Click" VerticalAlignment="Center"
+                        Visibility="{Binding HasUpdateNote, Converter={StaticResource BoolVis}}"/>
+
+                <TextBlock Grid.Column="5" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"
+                           VerticalAlignment="Center" Margin="12,0"
+                           Visibility="{Binding ShowInfoBar, Converter={StaticResource BoolVis}}"/>
+
+                <Button Grid.Column="6" Content="{DynamicResource 按钮_设置}" Padding="10,2" Margin="0,0,2,0"
+                        VerticalAlignment="Center" Click="Settings_Click"/>
+            </Grid>
+        </Border>
+
+        <Grid x:Name="BodyGrid" Grid.Row="1">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="210"/>
+            <ColumnDefinition Width="210" MinWidth="160"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-    <Grid Grid.Column="0" Margin="0,0,12,0">
+    <Grid Grid.Column="0" Margin="0,0,0,0" Visibility="{Binding ShowSidebar, Converter={StaticResource BoolVis}}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -78,13 +164,16 @@
                    FontSize="11" Style="{StaticResource HintText}"/>
     </Grid>
 
-    <Grid Grid.Column="1">
+    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                  ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" Cursor="SizeWE"
+                          Visibility="{Binding ShowSidebar, Converter={StaticResource BoolVis}}"/>
+    <Grid x:Name="MainGrid" Grid.Column="2">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="280" MinHeight="120"/>
         </Grid.RowDefinitions>
 
         <!-- ══ 查询栏 ══ -->
@@ -104,7 +193,8 @@
                 <TextBox x:Name="FromBox" Padding="8,6" VerticalContentAlignment="Center"
                          Text="{Binding FromText, UpdateSourceTrigger=PropertyChanged}"
                          Tag="{DynamicResource 标签_出发站}"
-                         PreviewKeyDown="FromBox_PreviewKeyDown" LostFocus="Box_LostFocus">
+                         PreviewKeyDown="FromBox_PreviewKeyDown" LostFocus="Box_LostFocus"
+                                 MouseLeftButtonUp="PickerBox_Click">
                     <!-- FR-04 要求"输入框标红"：光说"哪个框不对"不够，眼睛要能直接落到框上 -->
                     <TextBox.Style>
                         <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
@@ -132,7 +222,7 @@
                 <TextBox x:Name="ToBox" Padding="8,6" VerticalContentAlignment="Center"
                          Text="{Binding ToText, UpdateSourceTrigger=PropertyChanged}"
                          Tag="{DynamicResource 标签_到达站}"
-                         PreviewKeyDown="ToBox_PreviewKeyDown" LostFocus="Box_LostFocus">
+                         PreviewKeyDown="ToBox_PreviewKeyDown" LostFocus="Box_LostFocus" MouseLeftButtonUp="PickerBox_Click">
                     <TextBox.Style>
                         <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                             <Style.Triggers>
@@ -152,9 +242,10 @@
                 </Popup>
             </Grid>
 
-            <DatePicker Grid.Column="3" Margin="6,0" VerticalContentAlignment="Center"
+            <DatePicker x:Name="DateBox" Grid.Column="3" Margin="6,0" VerticalContentAlignment="Center"
                         SelectedDate="{Binding TravelDateValue, Mode=TwoWay}"
-                        DisplayDateStart="{Binding DateMin, Mode=OneWay}" DisplayDateEnd="{Binding DateMax, Mode=OneWay}"/>
+                        DisplayDateStart="{Binding DateMin, Mode=OneWay}" DisplayDateEnd="{Binding DateMax, Mode=OneWay}"
+                                PreviewMouseLeftButtonUp="DateBox_Click"/>
 
             <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="8,0">
                 <Button Content="{DynamicResource 快捷_今天}" Margin="3,0" Click="QuickDate_Click" Tag="0"/>
@@ -174,7 +265,7 @@
         </Grid>
 
         <!-- ══ 筛选与排序 ══ -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,8">
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,8" Visibility="{Binding ShowFilters, Converter={StaticResource BoolVis}}">
             <TextBlock Text="{DynamicResource 筛选_车型}" Style="{StaticResource HintText}" Margin="0,0,6,0"/>
             <ComboBox Width="120" ItemsSource="{Binding KindOptions}" SelectedItem="{Binding SelectedKind}"/>
             <TextBlock Text="{DynamicResource 筛选_时段}" Style="{StaticResource HintText}" Margin="16,0,6,0"/>
@@ -203,7 +294,6 @@
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding State, Converter={StaticResource StateVis}, ConverterParameter=Loading}">
                         <TextBlock Text="{DynamicResource 状态_加载}" FontSize="14"/>
-                        <TextBlock Margin="0,6,0,0" Style="{StaticResource HintText}" Text="{Binding DailyRemainingText}"/>
                         <ProgressBar IsIndeterminate="True" Width="220" Height="4" Margin="0,10,0,0"/>
                     </StackPanel>
 
@@ -224,6 +314,73 @@
                               BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               VirtualizingPanel.IsVirtualizing="True" Margin="0,0,0,40"
                               Visibility="{Binding State, Converter={StaticResource StateVis}, ConverterParameter=Results}">
+                                <ListView.Template>
+                                    <ControlTemplate TargetType="ListView">
+                                        <Border Background="{DynamicResource 渐变_内容底}"
+                                                BorderBrush="{DynamicResource 笔刷_边框}" BorderThickness="1" CornerRadius="3">
+                                            <DockPanel LastChildFill="True">
+                                                <Border DockPanel.Dock="Top"
+                                                        Background="{DynamicResource 渐变_徽标底}"
+                                                        BorderBrush="{DynamicResource 笔刷_边框}" BorderThickness="0,0,0,1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="130"/>
+                                                            <ColumnDefinition Width="160"/>
+                                                            <ColumnDefinition Width="170"/>
+                                                            <ColumnDefinition Width="70"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="90"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{DynamicResource 表头_车次}"
+                                                                   Style="{StaticResource 表头文字}"/>
+                                                        <Button Grid.Column="1" Style="{StaticResource 表头按钮}"
+                                                                Command="{Binding DataContext.SortByDepartureCommand, RelativeSource={RelativeSource AncestorType=ListView}}">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{DynamicResource 表头_出发}"/>
+                                                                <TextBlock Text="{Binding DataContext.FromSortMarker, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                           Margin="5,0,0,0" FontWeight="Bold"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Grid.Column="2" Style="{StaticResource 表头按钮}"
+                                                                Command="{Binding DataContext.SortByArrivalCommand, RelativeSource={RelativeSource AncestorType=ListView}}">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{DynamicResource 表头_到达}"/>
+                                                                <TextBlock Text="{Binding DataContext.ToSortMarker, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                           Margin="5,0,0,0" FontWeight="Bold"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Grid.Column="3" Style="{StaticResource 表头按钮}"
+                                                                Command="{Binding DataContext.SortByDurationCommand, RelativeSource={RelativeSource AncestorType=ListView}}">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{DynamicResource 表头_历时}"/>
+                                                                <TextBlock Text="{Binding DataContext.DurationSortMarker, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                           Margin="5,0,0,0" FontWeight="Bold"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <TextBlock Grid.Column="4" Text="{DynamicResource 表头_席别}"
+                                                                   Style="{StaticResource 表头文字}"/>
+                                                        <Button Grid.Column="5" Style="{StaticResource 表头按钮}"
+                                                                Command="{Binding DataContext.SortByPriceCommand, RelativeSource={RelativeSource AncestorType=ListView}}">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{DynamicResource 表头_最低价}"/>
+                                                                <TextBlock Text="{Binding DataContext.PriceSortMarker, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                           Margin="5,0,0,0" FontWeight="Bold"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <TextBlock Grid.Column="6" Text="{DynamicResource 表头_操作}"
+                                                                   Style="{StaticResource 表头文字}"/>
+                                                    </Grid>
+                                                </Border>
+                                                <ScrollViewer Focusable="False" Padding="1"
+                                                              HorizontalScrollBarVisibility="Disabled"
+                                                              VerticalScrollBarVisibility="Auto">
+                                                    <ItemsPresenter/>
+                                                </ScrollViewer>
+                                            </DockPanel>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ListView.Template>
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <Setter Property="Padding" Value="8,7"/>
@@ -268,7 +425,7 @@
                                     <TextBlock Grid.Column="5" Text="{Binding LowestPriceText}" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="6" Orientation="Horizontal">
                                         <Button Content="{DynamicResource 按钮_看经停}" Padding="8,2" Margin="4,0,0,0"
-                                                Command="{Binding DataContext.LoadStopsCommand, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                                Command="{Binding LoadStopsCommand}"/>
                                         <Button Content="{DynamicResource 按钮_多买几站}" Padding="8,2" Margin="4,0,0,0"
                                                 Visibility="{Binding CanBuyOnline, Converter={StaticResource BoolVis}, ConverterParameter=invert}"
                                                 Command="{Binding DataContext.RunExtensionCommand, RelativeSource={RelativeSource AncestorType=ListView}}"/>
@@ -393,125 +550,125 @@
         </TabControl>
 
         <!-- ══ 详情：经停站 + 多买几站 ══ -->
-        <Expander Grid.Row="3" IsExpanded="{Binding HasSelection, Mode=OneWay}" Margin="0,10,0,0" MaxHeight="320">
-            <Expander.Header>
-                <DockPanel LastChildFill="False">
-                    <TextBlock DockPanel.Dock="Left">
-                        <Run Text="{Binding Selected.TrainCode, Mode=OneWay}"/><Run Text="  "/><Run Text="{DynamicResource 详情_标题}"/><Run Text="  "/>
-                    </TextBlock>
-                    <!-- 起售时间（FR-33）：官方列 55 没给就整块不出现；未到与已过是两句话 -->
-                    <TextBlock DockPanel.Dock="Left" Text="{Binding Selected.OnSaleNote}" Margin="0,0,12,0"
-                               Style="{StaticResource HintText}"
-                               Visibility="{Binding Selected.HasOnSale, Converter={StaticResource BoolVis}}"/>
-                    <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_跳官方}" Padding="10,2"
-                            Margin="0,0,12,0" Command="{Binding OpenOfficialCommand}"/>
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding OfficialReminder}" MaxWidth="480"
-                               TextWrapping="Wrap" Margin="0,0,16,0" Style="{StaticResource HintText}"/>
-                </DockPanel>
-            </Expander.Header>
-            <Grid Margin="12,8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                <!-- 结果区 ⇕ 详情区。详情区被隐藏时这条也随之消失（FR-40）。 -->
+                <GridSplitter Grid.Row="3" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                              ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS"
+                              Margin="0,2" Visibility="{Binding ShowDetail, Converter={StaticResource BoolVis}}"/>
 
-                <GroupBox Grid.Column="0" Header="{DynamicResource 详情_经停标题}">
-                    <Grid>
-                        <ListView ItemsSource="{Binding Stops}" BorderThickness="0"
-                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
-                            <ListView.View>
-                                <GridView>
-                                    <GridViewColumn Header="{DynamicResource 详情_站序}" Width="46" DisplayMemberBinding="{Binding StationNo}"/>
-                                    <GridViewColumn Header="{DynamicResource 详情_站名}" Width="150" DisplayMemberBinding="{Binding StationName}"/>
-                                    <GridViewColumn Header="{DynamicResource 详情_到时}" Width="76" DisplayMemberBinding="{Binding ArriveText}"/>
-                                    <GridViewColumn Header="{DynamicResource 详情_发时}" Width="76" DisplayMemberBinding="{Binding DepartText}"/>
-                                    <GridViewColumn Header="{DynamicResource 详情_停留}" Width="80" DisplayMemberBinding="{Binding StopoverText}"/>
-                                    <GridViewColumn Header="" Width="30" DisplayMemberBinding="{Binding Marker}"/>
-                                </GridView>
-                            </ListView.View>
-                        </ListView>
-                        <TextBlock Text="{Binding DetailHint}" VerticalAlignment="Center" HorizontalAlignment="Center"
-                                   TextWrapping="Wrap" MaxWidth="380" TextAlignment="Center"
-                                   Visibility="{Binding HasStops, Converter={StaticResource BoolVis}, ConverterParameter=invert}"/>
-                    </Grid>
-                </GroupBox>
+                <!-- ══ 详情：经停站 + 多买几站（FR-43 起：选中即出数，不再必须点按钮）══
+                     折叠按钮与"视图"菜单改的是同一个布尔值；隐藏后想再出来，勾菜单或直接点某行的"经停站"。 -->
+                <Border Grid.Row="4" Margin="0,10,0,0" CornerRadius="4"
+                        Background="{DynamicResource 渐变_内容底}"
+                        BorderBrush="{DynamicResource 笔刷_控件边界}" BorderThickness="1"
+                        Visibility="{Binding ShowDetail, Converter={StaticResource BoolVis}}">
+                    <DockPanel LastChildFill="True">
+                        <Border DockPanel.Dock="Top" Background="{DynamicResource 渐变_徽标底}"
+                                BorderBrush="{DynamicResource 笔刷_边框}" BorderThickness="0,0,0,1"
+                                CornerRadius="4,4,0,0" Padding="10,6">
+                            <DockPanel LastChildFill="False">
+                                <Button DockPanel.Dock="Left" Content="{Binding DetailToggleGlyph}"
+                                        Width="22" Padding="0" Margin="0,0,6,0" Click="ToggleDetail_Click"
+                                        ToolTip="{DynamicResource 视图_详情区}"/>
+                                <TextBlock DockPanel.Dock="Left" FontWeight="SemiBold" VerticalAlignment="Center">
+                                    <Run Text="{Binding Selected.TrainCode, Mode=OneWay}"/><Run Text="  "/><Run Text="{DynamicResource 详情_标题}"/><Run Text="  "/>
+                                </TextBlock>
+                                <!-- 起售时间（FR-33）：官方列 55 没给就整块不出现；未到与已过是两句话 -->
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Selected.OnSaleNote}" Margin="12,0,0,0"
+                                           Style="{StaticResource HintText}" VerticalAlignment="Center"
+                                           Visibility="{Binding Selected.HasOnSale, Converter={StaticResource BoolVis}}"/>
+                                <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_跳官方}" Padding="10,2"
+                                        Margin="12,0,0,0" Command="{Binding OpenOfficialCommand}"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding OfficialReminder}" MaxWidth="480"
+                                           TextWrapping="Wrap" VerticalAlignment="Center" Style="{StaticResource HintText}"/>
+                            </DockPanel>
+                        </Border>
 
-                <GroupBox Grid.Column="2" Header="{DynamicResource 扩展_标题}">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="{DynamicResource 扩展_上限}" Style="{StaticResource HintText}"/>
-                            <ComboBox Width="56" Margin="8,0" SelectedItem="{Binding MaxExtensionStations}"
-                                      ItemsSource="{Binding StationChoices}"/>
-                            <Button Content="{DynamicResource 按钮_开始扩展}" Padding="10,2"
-                                    Command="{Binding RunExtensionCommand}"/>
-                            <TextBlock Text="{Binding ExtensionSummary}" Margin="12,0,0,0" Style="{StaticResource HintText}"/>
-                        </StackPanel>
+                        <Grid Margin="12,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                            <TextBlock Text="{Binding ExtensionStatus}" Style="{StaticResource HintText}" TextWrapping="Wrap"/>
-                            <TextBlock Text="{Binding ExtensionDisclaimer}" Margin="0,4,0,0" FontSize="11" Style="{StaticResource HintText}" TextWrapping="Wrap"/>
-                        </StackPanel>
+                            <GroupBox Grid.Column="0" Header="{DynamicResource 详情_经停标题}">
+                                <Grid>
+                                    <ListView ItemsSource="{Binding Stops}" BorderThickness="0"
+                                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="{DynamicResource 详情_站序}" Width="46" DisplayMemberBinding="{Binding StationNo}"/>
+                                                <GridViewColumn Header="{DynamicResource 详情_站名}" Width="150" DisplayMemberBinding="{Binding StationName}"/>
+                                                <GridViewColumn Header="{DynamicResource 详情_到时}" Width="76" DisplayMemberBinding="{Binding ArriveText}"/>
+                                                <GridViewColumn Header="{DynamicResource 详情_发时}" Width="76" DisplayMemberBinding="{Binding DepartText}"/>
+                                                <GridViewColumn Header="{DynamicResource 详情_停留}" Width="80" DisplayMemberBinding="{Binding StopoverText}"/>
+                                                <GridViewColumn Header="" Width="30" DisplayMemberBinding="{Binding Marker}"/>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                    <TextBlock Text="{Binding DetailHint}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                               TextWrapping="Wrap" MaxWidth="380" TextAlignment="Center"
+                                               Visibility="{Binding HasStops, Converter={StaticResource BoolVis}, ConverterParameter=invert}"/>
+                                </Grid>
+                            </GroupBox>
 
-                        <ListView ItemsSource="{Binding Extensions}" BorderThickness="0">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="150"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="80"/>
-                                            <ColumnDefinition Width="110"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding ExtraText}" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding RouteText}" FontSize="11" Style="{StaticResource HintText}"/>
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="1" Text="{Binding SeatSummary}"
-                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding PriceText}" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="3" Text="{Binding DeltaText}" VerticalAlignment="Center">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsAnomalous}" Value="True">
-                                                            <Setter Property="Foreground" Value="{DynamicResource 笔刷_错误}"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsBuyable}" Value="True">
-                                                            <Setter Property="Foreground" Value="{DynamicResource 笔刷_成功}"/>
-                                                            <Setter Property="FontWeight" Value="Bold"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                            <GroupBox Grid.Column="2" Header="{DynamicResource 扩展_标题}">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="{DynamicResource 扩展_上限}" Style="{StaticResource HintText}"/>
+                                        <ComboBox Width="56" Margin="8,0" SelectedItem="{Binding MaxExtensionStations}"
+                                                  ItemsSource="{Binding StationChoices}"/>
+                                        <Button Content="{DynamicResource 按钮_开始扩展}" Padding="10,2"
+                                                Command="{Binding RunExtensionCommand}"/>
+                                        <TextBlock Text="{Binding ExtensionSummary}" Margin="12,0,0,0" Style="{StaticResource HintText}"/>
+                                    </StackPanel>
+
+                                    <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                                        <TextBlock Text="{Binding ExtensionStatus}" Style="{StaticResource HintText}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding ExtensionDisclaimer}" Margin="0,4,0,0" FontSize="11" Style="{StaticResource HintText}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+
+                                    <ListView ItemsSource="{Binding Extensions}" BorderThickness="0">
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="150"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="80"/>
+                                                        <ColumnDefinition Width="110"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="{Binding ExtraText}" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding RouteText}" FontSize="11" Style="{StaticResource HintText}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="1" Text="{Binding SeatSummary}"
+                                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding PriceText}" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="3" Text="{Binding DeltaText}" VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsAnomalous}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource 笔刷_错误}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsBuyable}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource 笔刷_成功}"/>
+                                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </DockPanel>
+                            </GroupBox>
+                        </Grid>
                     </DockPanel>
-                </GroupBox>
-            </Grid>
-        </Expander>
-
-        <!-- ══ 状态栏 ══ -->
-        <DockPanel Grid.Row="4" Margin="0,10,0,0" LastChildFill="False">
-            <TextBlock DockPanel.Dock="Left" Style="{StaticResource HintText}">
-                <Run Text="{DynamicResource 提示_站点数据}"/><Run Text=" "/>
-                <Run Text="{Binding StationDataDate, Mode=OneWay}"/>
-            </TextBlock>
-            <TextBlock DockPanel.Dock="Left" Margin="20,0,0,0" Style="{StaticResource HintText}"
-                       Text="{Binding StatusText}"/>
-            <Button DockPanel.Dock="Right" Content="{DynamicResource 按钮_设置}" Padding="10,2" Margin="12,0,0,0"
-                    Click="Settings_Click"/>
-            <!-- 新版本提示（FR-36）：弱到不改变阅读顺序，点一下交给系统浏览器打开发布页。
-                 没有新版本时这个位置是空的，不占位也不解释。 -->
-            <Button DockPanel.Dock="Right" Content="{Binding UpdateNote}" Padding="10,2" Margin="12,0,0,0"
-                    FontSize="11" Foreground="{DynamicResource 笔刷_成功}" Background="Transparent" BorderThickness="0"
-                    Click="OpenRelease_Click"
-                    Visibility="{Binding HasUpdateNote, Converter={StaticResource BoolVis}}"/>
-            <TextBlock DockPanel.Dock="Right" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"/>
-        </DockPanel>
+                </Border>
     </Grid>
+        </Grid>
     </Grid>
 </Window>

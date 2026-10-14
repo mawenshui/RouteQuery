@@ -46,6 +46,11 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private int _maxStations = 3;
     private string _extensionStatus = string.Empty;
     private int _dailyRemaining;
+    private bool _showSidebar = true;
+    private bool _showFilters = true;
+    private bool _showDetail = true;
+    private bool _showInfoBar = true;
+    private CancellationTokenSource? _stopsToken;
 
     public MainViewModel(
         IStationRepository stations,
@@ -96,6 +101,12 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         UpdateStationsCommand = new Mvvm.AsyncCommand(UpdateStationsAsync);
         TransferQueryCommand = new Mvvm.AsyncCommand(RunTransferAsync);
         OpenOfficialCommand = new Mvvm.AsyncCommand(OpenOfficialAsync);
+        // 表头点击（FR-42）。只有"出发"有两个方向可切——FR-12 定义的五个排序键里
+        // 只有出发既有最早也有最晚，其余三列（到达最早、历时最短、最低价）本来就没有反向语义。
+        SortByDepartureCommand = new Mvvm.AsyncCommand(_ => { SortByColumn(SortKey.DepartureEarliest, SortKey.DepartureLatest); return Task.CompletedTask; });
+        SortByArrivalCommand = new Mvvm.AsyncCommand(_ => { SortByColumn(SortKey.ArrivalEarliest); return Task.CompletedTask; });
+        SortByDurationCommand = new Mvvm.AsyncCommand(_ => { SortByColumn(SortKey.ShortestDuration); return Task.CompletedTask; });
+        SortByPriceCommand = new Mvvm.AsyncCommand(_ => { SortByColumn(SortKey.LowestPrice); return Task.CompletedTask; });
 
         // 启动时检查一次新版本（FR-36：仅启动时一次，不定时、不轮询、不因用户操作重复发起）。
         // 故意不等它、也不让它挡首屏——这个动作失败必须完全无声。
@@ -108,6 +119,13 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     public Mvvm.AsyncCommand UpdateStationsCommand { get; }
     public Mvvm.AsyncCommand TransferQueryCommand { get; }
     public Mvvm.AsyncCommand OpenOfficialCommand { get; }
+
+    /// <summary>四个可点的表头（FR-42）。它们只改 <see cref="SortKey"/> 并复用同一条本地排序，
+    /// 不另起一套比较逻辑——否则"点表头"与"用下拉选同一个键"会排出两个结果。</summary>
+    public Mvvm.AsyncCommand SortByDepartureCommand { get; }
+    public Mvvm.AsyncCommand SortByArrivalCommand { get; }
+    public Mvvm.AsyncCommand SortByDurationCommand { get; }
+    public Mvvm.AsyncCommand SortByPriceCommand { get; }
 
     /// <summary>
     /// 用系统默认浏览器打开官方查询页（FR-19）。<b>本应用不发这个请求</b>——交给浏览器，
@@ -326,7 +344,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         set
         {
             _settings.Save(_settings.Load() with { Theme = value });
-            Raise(nameof(Theme));
+            Raise(nameof(Theme), nameof(ThemeFollows), nameof(ThemeLight), nameof(ThemeDark));
         }
     }
 
@@ -406,6 +424,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
                 FromInvalid = false;   // 用户已经在动这个框了，红框就该消失（FR-04）
                 Raise(nameof(FromPick));
                 Populate(FromCandidates, value, _stations);
+                AutoPick(FromCandidates, value, PickFrom);   // FR-45：没有歧义就别再逼用户点一次
             }
         }
     }
@@ -422,6 +441,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
                 ToInvalid = false;
                 Raise(nameof(ToPick));
                 Populate(ToCandidates, value, _stations);
+                AutoPick(ToCandidates, value, PickTo);
             }
         }
     }
@@ -475,6 +495,9 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     {
         _from = s;
         _fromText = s.Name;
+        // 选中项与"这一框当前定在哪个站"必须同步：自动选定（FR-45）走的就是这条路，
+        // 只写 _from 会让候选列表的高亮与实际用于查询的站不一致。
+        _fromPick = s;
         FromInvalid = false;
         Raise(nameof(FromText));
         FromCandidates.Clear();
@@ -484,6 +507,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     {
         _to = s;
         _toText = s.Name;
+        _toPick = s;
         ToInvalid = false;
         Raise(nameof(ToText));
         ToCandidates.Clear();
@@ -531,12 +555,44 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         foreach (var h in hits) target.Add(h);
     }
 
+    /// <summary>
+    /// 唯一命中就替用户选定（FR-45）。判定只有两条，其余一律不选：
+    /// ① 输入与某站**站名完全相同**；② 候选**恰好一条**。
+    /// <para>为什么不做"取第一条"或"取最像的那条"：北京命中北京/北京南/北京西，衡水命中衡水/衡水北。
+    /// 替用户挑一个并据此向官方发查询，等于把一次猜测定格成一张看起来完全正常的结果——
+    /// 那正是 NFR-18 反对的形状，而它的代价由最不了解内情的亲友付。</para>
+    /// </summary>
+    private void AutoPick(ObservableCollection<Station> candidates, string text, Action<Station> pick)
+    {
+        var trimmed = (text ?? string.Empty).Trim();
+        if (trimmed.Length == 0 || candidates.Count == 0) return;
+
+        var exact = candidates.FirstOrDefault(c => string.Equals(c.Name, trimmed, StringComparison.Ordinal));
+        if (exact is not null) { pick(exact); return; }
+        if (candidates.Count == 1) pick(candidates[0]);
+    }
+
+    /// <summary>点站名框的空白处重新铺开候选（FR-39 的"点整块都能展开"）。只查本地码表，不发请求。</summary>
+    public void ReopenFromCandidates() => Populate(FromCandidates, FromText, _stations);
+
+    /// <summary>同上，到达站。</summary>
+    public void ReopenToCandidates() => Populate(ToCandidates, ToText, _stations);
+
     // ── 结果与状态 ───────────────────────────────────────────
     public ObservableCollection<JourneyRowViewModel> Rows { get; } = [];
     public ObservableCollection<StopRowViewModel> Stops { get; } = [];
     public ObservableCollection<ExtensionRowViewModel> Extensions { get; } = [];
 
     public IReadOnlyList<TrainJourney> Raw { get; private set; } = [];
+
+    /// <summary>码表刚更新成功、还没重启时为 true。界面读它决定要不要弹重启提示（FR-41）。</summary>
+    public bool StationUpdateNeedsRestart { get; private set; }
+
+    /// <summary>弹窗已经问过用户了，标记就该落下——否则下次点更新按钮不会再问。</summary>
+    public void AcknowledgeStationUpdate() => StationUpdateNeedsRestart = false;
+
+    /// <summary>弹窗正文（已填入条数与日期）。</summary>
+    public string StationUpdateNote { get; private set; } = string.Empty;
 
     public ViewState State
     {
@@ -579,13 +635,90 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         {
             if (Set(ref _selected, value))
             {
+                // 换选就要作废上一趟的在途请求：它的结果属于刚才那趟车，落到现在这趟上是错的（FR-08 同口径）。
+                _stopsToken?.Cancel();
+                _stopsToken?.Dispose();
+                _stopsToken = null;
+
                 Stops.Clear();
                 Extensions.Clear();
                 ExtensionStatus = string.Empty;
                 DetailHint = _text.Get("详情_空提示");
                 Raise(nameof(HasSelection), nameof(HasStops), nameof(DetailHint), nameof(OfficialReminder));
+
+                // FR-43：选中即出数，用户不必再找按钮。详情区被隐藏时**不取**——
+                // 花掉一次官方额度却渲染不出任何东西，是纯浪费。
+                if (value is { } row && ShowDetail)
+                    _ = LoadStopsForAsync(row);
             }
         }
+    }
+
+    // ── 面板显隐（FR-40）──────────────────────────────────────
+    // 只影响本次运行，不写进设置：这是"临时把某块挪开看一下"的调整，
+    // 而 FR-22 的原始约束是"不做多余开关"。重启后回到全部显示。
+    public bool ShowSidebar
+    {
+        get => _showSidebar;
+        set { if (Set(ref _showSidebar, value)) Raise(nameof(ShowSidebar)); }
+    }
+
+    public bool ShowFilters
+    {
+        get => _showFilters;
+        set { if (Set(ref _showFilters, value)) Raise(nameof(ShowFilters)); }
+    }
+
+    public bool ShowDetail
+    {
+        get => _showDetail;
+        set
+        {
+            if (!Set(ref _showDetail, value)) return;
+            Raise(nameof(ShowDetail), nameof(DetailToggleGlyph));
+            // 重新显示时，如果已经选中了某趟且手里有货，就把那份摆回来；
+            // 没取过的（隐藏期间换选过）这时才补一次请求。
+            if (value && Selected is { } row)
+                _ = LoadStopsForAsync(row);
+        }
+    }
+
+    /// <summary>详情区标题条上那个折叠按钮的字（▾/▸）。</summary>
+    public string DetailToggleGlyph => _text.Get(ShowDetail ? "按钮_折叠" : "按钮_展开");
+
+    public bool ShowInfoBar
+    {
+        get => _showInfoBar;
+        set { if (Set(ref _showInfoBar, value)) Raise(nameof(ShowInfoBar)); }
+    }
+
+    // ── 主题三态（FR-41：菜单与设置页共用同一个档位，不各存一份）──
+    // 这里只读档位；换色板是 WPF 动作，由界面层调用 ThemeManager（见 SettingsWindow 与主窗口）。
+    public bool ThemeFollows => Theme == ThemeChoice.FollowSystem;
+    public bool ThemeLight => Theme == ThemeChoice.Light;
+    public bool ThemeDark => Theme == ThemeChoice.Dark;
+
+    // ── 表头排序标记（FR-42）──────────────────────────────────
+    public string FromSortMarker => MarkerFor(SortKey.DepartureEarliest, SortKey.DepartureLatest);
+    public string ToSortMarker => MarkerFor(SortKey.ArrivalEarliest);
+    public string DurationSortMarker => MarkerFor(SortKey.ShortestDuration);
+    public string PriceSortMarker => MarkerFor(SortKey.LowestPrice);
+
+    private string MarkerFor(params SortKey[] keys)
+    {
+        if (keys.Length == 0) return string.Empty;
+        if (!keys.Contains(_sortKey)) return string.Empty;
+        // 反向只有"出发"存在（FR-12 只给了"最晚出发"这一个反向键）
+        return _sortKey == keys[^1] && keys.Length > 1 ? _text.Get("表头_降序") : _text.Get("表头_升序");
+    }
+
+    /// <summary>点表头：切到该列的排序键；同一列有两个方向时来回切。</summary>
+    private void SortByColumn(params SortKey[] keys)
+    {
+        var next = keys.Length > 1 && _sortKey == keys[0] ? keys[1] : keys[0];
+        // 只从"下拉框那一份状态"写起：点表头与用下拉选同一个键必须是同一件事，
+        // 各写一遍就会出现"表头显示 ▴ 而实际按另一键排"。
+        if (SortOptions.FirstOrDefault(o => o.Value == next) is { } option) SelectedSort = option;
     }
 
     public bool HasSelection => Selected is not null;
@@ -614,7 +747,12 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     public SortKey SortKey
     {
         get => _sortKey;
-        set { _sortKey = value; ApplyLocalView(); }
+        set
+        {
+            _sortKey = value;
+            Raise(nameof(FromSortMarker), nameof(ToSortMarker), nameof(DurationSortMarker), nameof(PriceSortMarker));
+            ApplyLocalView();
+        }
     }
 
     public void ClearFilters() => Criteria = new QueryCriteria();
@@ -717,6 +855,13 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         BookStatus = r.Succeeded
             ? string.Format(_text.Get("码表_已更新"), r.Count, r.SourceDate.ToString("yyyy-MM-dd"))
             : r.FailureReason ?? _text.Get("错误_数据缺失");
+
+        // v2.7（FR-41）：这一句写在侧栏里太容易划过去，而"更新完没重启"等于没更新。
+        // 视图模型只留标记，弹窗与重启动作归界面层——它才知道 Owner 窗口和进程。
+        StationUpdateNeedsRestart = r.Succeeded;
+        StationUpdateNote = r.Succeeded
+            ? string.Format(_text.Get("码表_重启正文"), r.Count, r.SourceDate.ToString("yyyy-MM-dd"))
+            : string.Empty;
     }
 
     /// <summary>状态栏的站点数据日期，让亲友能自查是不是码表过期（FR-18）。</summary>
@@ -740,7 +885,14 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         var sorted = JourneySorter.Apply(filtered, SortKey);
 
         Rows.Clear();
-        foreach (var j in sorted) Rows.Add(new JourneyRowViewModel(j, _text, DateTimeOffset.Now));
+        foreach (var j in sorted)
+        {
+            var row = new JourneyRowViewModel(j, _text, DateTimeOffset.Now);
+            // 每一行自己带一个按钮命令（FR-43 验收③）：未选中的行点"经停站"也要能出数，
+            // 而共享一条命令只能读到"当前选中行"，那条路对未选中的行是断的。
+            row.AttachLoadStops(new Mvvm.AsyncCommand(ct => LoadStopsFromRowAsync(row, ct)));
+            Rows.Add(row);
+        }
 
         State = sorted.Count > 0 ? ViewState.Results
             : Raw.Count == 0 ? ViewState.Results
@@ -883,10 +1035,30 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     };
 
     // ── 经停站（FR-14）──────────────────────────────────────
+    /// <summary>
+    /// 行上的"经停站"按钮（FR-43 验收③）：**未选中的行也要能出数**。
+    /// 做法是先显示详情区、再选中这一行——选中自己会触发取数，所以这里不重复请求。
+    /// </summary>
+    internal Task LoadStopsFromRowAsync(JourneyRowViewModel row, CancellationToken ct)
+    {
+        ShowDetail = true;
+        if (!ReferenceEquals(Selected, row))
+        {
+            Selected = row;
+            return Task.CompletedTask;
+        }
+        return LoadStopsAsync(ct);
+    }
+
     internal async Task LoadStopsAsync(CancellationToken ct)
     {
         // 先固定住这一行：await 期间用户可能点了别的车次，迟到结果不能写到新的选中行上（FR-08）。
         if (Selected is not { } row) return;
+        if (row.CachedStops is { } cached)
+        {
+            RevealStops(row, cached);
+            return;
+        }
 
         try
         {
@@ -895,11 +1067,10 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
 
             if (!ReferenceEquals(Selected, row)) return;
 
-            Stops.Clear();
-            foreach (var s in route.Stops)
-                Stops.Add(new StopRowViewModel(s, row.Model.From.Name, row.Model.To.Name, _text));
-
-            DetailHint = string.Empty;
+            var built = Build(row, route.Stops);
+            row.CachedStops = built;
+            RevealStops(row, built);
+            DailyRemaining = _budget.DailyRemaining;   // 这次取数花掉了一次额度，界面上要立刻看得出来
         }
         catch (QueryException ex)
         {
@@ -918,6 +1089,28 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         {
             Raise(nameof(HasStops), nameof(DetailHint));
         }
+    }
+
+    /// <summary>选中某一行时自动取它的经停（FR-43）。同一趟已经取过的走缓存，不再花额度。</summary>
+    private Task LoadStopsForAsync(JourneyRowViewModel row)
+    {
+        _stopsToken?.Cancel();
+        _stopsToken?.Dispose();
+        _stopsToken = new CancellationTokenSource();
+        DetailHint = _text.Get("状态_加载");
+        Raise(nameof(HasStops), nameof(DetailHint));
+        return LoadStopsAsync(_stopsToken.Token);
+    }
+
+    private List<StopRowViewModel> Build(JourneyRowViewModel row, IEnumerable<Core.Model.StopDetail> stops) =>
+        [.. stops.Select(s => new StopRowViewModel(s, row.Model.From.Name, row.Model.To.Name, _text))];
+
+    private void RevealStops(JourneyRowViewModel row, IReadOnlyList<StopRowViewModel> stops)
+    {
+        Stops.Clear();
+        foreach (var s in stops) Stops.Add(s);
+        DetailHint = string.Empty;
+        Raise(nameof(HasStops), nameof(DetailHint));
     }
 
     /// <summary>FR-15：展开或收起中转方案的<b>某一段</b>。两段各持有自己的结果，所以这里只动传进来的那一段。</summary>

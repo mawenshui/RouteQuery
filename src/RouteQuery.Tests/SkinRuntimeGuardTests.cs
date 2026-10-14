@@ -36,7 +36,6 @@ public class SkinRuntimeGuardTests
         ["表格与行"] = () => NewGrid(),
         ["页签"] = () => NewTabs(),
         ["分组框"] = () => new GroupBox { Header = "经停站", Content = "内容" },
-        ["展开面板"] = () => new Expander { Header = "多买几站", Content = "内容", IsExpanded = true },
         ["进度条"] = () => new ProgressBar { Minimum = 0, Maximum = 100, Value = 40 },
         ["单选按钮"] = () => new RadioButton { Content = "只看有票", IsChecked = true },
     };

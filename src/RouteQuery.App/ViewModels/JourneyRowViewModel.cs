@@ -66,6 +66,18 @@ public sealed class JourneyRowViewModel(TrainJourney journey, ITextProvider text
     /// <summary>不可网上购票才提供"多买几站"入口（FR-31）。</summary>
     public bool CanBuyOnline => Model.CanBuyOnline;
 
+    /// <summary>
+    /// 本次运行内这一趟已经取到的经停（FR-43 的"同一趟不重复花额度"）。
+    /// <para>缓存挂在行上而不是挂在视图模型的字典里：行随每次查询重建，所以它天然按
+    /// "这一趟 + 这一次查询的日期与区间"生效——不会出现换了日期还把昨天的时刻表当成今天的结果。</para>
+    /// </summary>
+    internal IReadOnlyList<StopRowViewModel>? CachedStops { get; set; }
+
+    /// <summary>行上的"经停站"按钮。取数要经主视图模型手里的服务，所以由它在建行时接上。</summary>
+    public Mvvm.AsyncCommand LoadStopsCommand { get; private set; } = null!;
+
+    internal void AttachLoadStops(Mvvm.AsyncCommand command) => LoadStopsCommand = command;
+
     /// <summary>放票时间（FR-33）。官方未给时整行不显示，不显示猜测值。</summary>
     public string OnSaleText => Model.OnSaleAt is { } t ? t.ToString("M月d日 HH:mm 起售") : string.Empty;
 

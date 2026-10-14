@@ -34,6 +34,37 @@ public class XamlBindingGuardTests
         Assert.Empty(missing);
     }
 
+    /// <summary>
+    /// 表头与数据行的列宽必须同源（FR-42）。
+    /// <para>为什么单独守这一条：表头那一行画在 ScrollViewer 外面（这样它才不随纵向滚动滚走），
+    /// 于是它的列宽与行模板的列宽是**两处各写一遍的数字**。这种形态一定会漂——
+    /// 漂了不报错，只是表头与数据对不齐，而"看起来对齐"正是它最难发现的地方。</para>
+    /// </summary>
+    [Fact]
+    public void 结果列表的表头列宽必须与行模板逐列相同()
+    {
+        var text = File.ReadAllText(Path.Combine(AppDir, "MainWindow.xaml"));
+        var start = text.IndexOf("<ListView x:Name=\"ResultList\"", StringComparison.Ordinal);
+        Assert.True(start >= 0, "主窗口里找不到结果列表，这条守卫就变成空转了");
+        var list = text[start..text.IndexOf("</ListView>", start, StringComparison.Ordinal)];
+
+        var 表头 = 列宽(list, "<ListView.Template>", "<ListView.ItemContainerStyle>");
+        var 行 = 列宽(list, "<ListView.ItemTemplate>", "</ListView>");
+
+        Assert.True(表头.Count > 0 && 行.Count > 0, $"表头或行模板没找到列定义（表头 {表头.Count} 列，行 {行.Count} 列）");
+        Assert.Equal(行, 表头);
+    }
+
+    private static List<string> 列宽(string text, string from, string until)
+    {
+        var i = text.IndexOf(from, StringComparison.Ordinal);
+        Assert.True(i >= 0, $"找不到 {from}");
+        var j = text.IndexOf(until, i, StringComparison.Ordinal);
+        var seg = j < 0 ? text[i..] : text[i..j];
+        return System.Text.RegularExpressions.Regex.Matches(seg, @"<ColumnDefinition Width=""([^""]+)""/>")
+            .Select(m => m.Groups[1].Value).ToList();
+    }
+
     [Fact]
     public void 引用的每一条文案键都必须有定义()
     {

@@ -16,9 +16,137 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        DataContextChanged += (_, _) => Sync();
+        Loaded += (_, _) => Sync();
     }
 
     private MainViewModel Vm => (MainViewModel)DataContext;
+
+    // ── 面板显隐与几何（FR-40）──────────────────────────────────
+    //
+    // 为什么放在代码后置而不是 XAML：隐藏一块区域要把它那一列/那一行的尺寸也收掉，
+    // 而 ColumnDefinition.Width 与 RowDefinition.Height 不是能直接绑定的东西；
+    // 更关键的是"最小尺寸"——侧栏平时最小 160，隐藏时若不清零就永远收不起来。
+    // 视图模型只管"显示还是不显示"这个布尔值，几何是界面层的事。
+    private GridLength _侧栏宽 = new(210);
+    private GridLength _详情高 = new(280);
+    private MainViewModel? _tracked;
+
+    private void Sync()
+    {
+        if (ReferenceEquals(_tracked, Vm)) return;
+        if (_tracked is not null) _tracked.PropertyChanged -= Tracked_Changed;
+        _tracked = Vm;
+        _tracked.PropertyChanged += Tracked_Changed;
+        ApplyGeometry();
+    }
+
+    private void Tracked_Changed(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MainViewModel.ShowSidebar) or nameof(MainViewModel.ShowDetail))
+            ApplyGeometry();
+    }
+
+    private void ApplyGeometry()
+    {
+        if (_tracked is not { } vm) return;
+
+        if (vm.ShowSidebar)
+        {
+            BodyGrid.ColumnDefinitions[0].MinWidth = 160;
+            BodyGrid.ColumnDefinitions[0].Width = _侧栏宽;
+        }
+        else
+        {
+            if (BodyGrid.ColumnDefinitions[0].Width.Value > 1) _侧栏宽 = BodyGrid.ColumnDefinitions[0].Width;
+            BodyGrid.ColumnDefinitions[0].MinWidth = 0;
+            BodyGrid.ColumnDefinitions[0].Width = new GridLength(0);
+        }
+
+        if (vm.ShowDetail)
+        {
+            MainGrid.RowDefinitions[4].MinHeight = 120;
+            MainGrid.RowDefinitions[4].Height = _详情高;
+        }
+        else
+        {
+            if (MainGrid.RowDefinitions[4].Height.Value > 1) _详情高 = MainGrid.RowDefinitions[4].Height;
+            MainGrid.RowDefinitions[4].MinHeight = 0;
+            MainGrid.RowDefinitions[4].Height = new GridLength(0);
+        }
+    }
+
+    private void ToggleDetail_Click(object sender, RoutedEventArgs e) => Vm.ShowDetail = !Vm.ShowDetail;
+
+    // ── 顶部菜单（FR-41）───────────────────────────────────────
+    private void Exit_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void ShowStatement_Click(object sender, RoutedEventArgs e) => MessageBox.Show(
+        Composition.Text.Get("声明_首次正文"),
+        Composition.Text.Get("声明_首次标题"),
+        MessageBoxButton.OK,
+        MessageBoxImage.Information);
+
+    /// <summary>菜单里的主题三档与设置页里那三个单选按钮改的是同一个 <see cref="MainViewModel.Theme"/>，
+    /// 换色板是 WPF 动作，所以由界面层调 ThemeManager。</summary>
+    private void Theme_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string tag } || !Enum.TryParse<Core.Ports.ThemeChoice>(tag, out var choice))
+            return;
+
+        Vm.Theme = choice;
+        Theme.ThemeManager.Apply(choice);
+    }
+
+    /// <summary>更新站点码表（FR-18）。成功后必须弹一次重启提示——更新完不重启等于没更新，
+    /// 而写在侧栏里的那一句会被划过去。失败不弹，也绝不显示成功措辞。</summary>
+    private async void UpdateStations_Click(object sender, RoutedEventArgs e)
+    {
+        await Vm.UpdateStationsAsync(default);
+        if (!Vm.StationUpdateNeedsRestart) return;
+
+        Vm.AcknowledgeStationUpdate();
+        var now = MessageBox.Show(
+            Vm.StationUpdateNote,
+            Composition.Text.Get("码表_重启标题"),
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+        if (now != MessageBoxResult.Yes) return;
+
+        // 先起新进程再退当前：反过来会出现"双击没反应、程序也没了"的观感，
+        // 而单文件自包含件冷启动要十几秒，用户会以为它崩了。
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            { FileName = Environment.ProcessPath!, UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            MessageBox.Show(Composition.Text.Get("错误_数据缺失"),
+                Composition.Text.Get("码表_重启标题"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        Application.Current.Shutdown();
+    }
+
+    // ── 整块可展开（FR-39）─────────────────────────────────────
+    /// <summary>点站名框的空白处重新铺开候选。打字路径不变，所以这里只补"点了却什么都没出现"那一下。</summary>
+    private void PickerBox_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        if (ReferenceEquals(box, FromBox)) Vm.ReopenFromCandidates();
+        else Vm.ReopenToCandidates();
+    }
+
+    /// <summary>日期框点任意位置弹出日历（FR-39）。箭头那一下由控件自己负责，
+    /// 这里再翻一次会变成"点了等于没点"，所以命中箭头时直接放过。</summary>
+    private void DateBox_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is System.Windows.Controls.Primitives.ToggleButton) return;
+        DateBox.IsDropDownOpen = true;
+    }
+
 
     private void Swap_Click(object sender, RoutedEventArgs e) => Vm.Swap();
 

@@ -1,5 +1,6 @@
 using RouteQuery.App.ViewModels;
 using RouteQuery.Core.Errors;
+using RouteQuery.Core.Logic;
 using RouteQuery.Core.Model;
 using RouteQuery.Core.Ports;
 
@@ -19,6 +20,8 @@ public class MainViewModelTests
     /// <summary>段内日期。FR-15 展开该段经停时用的就是它，取自官方样本的 <c>start_train_date</c>。</summary>
     private static readonly DateOnly LegDate = new(2026, 10, 11);
     private static readonly Station Nanjing = new("南京南", "NJH", "nanjingnan", "njj", "1301", "南京");
+    /// <summary>用来造歧义：输入"北京"会同时命中北京南与北京西，谁也不该被替用户选走（FR-45 判定③）。</summary>
+    internal static readonly Station BeijingWest = new("北京西", "BXP", "beijingxi", "bjx", "1002", "北京");
     private static readonly Station Shanghai = new("上海虹桥", "AOH", "shanghaihongqiao", "shq", "0201", "上海");
 
     /// <summary>一套替身 + 一个装配好的视图模型。默认不自动检查更新，免得后台任务干扰计数。</summary>
@@ -32,7 +35,9 @@ public class MainViewModelTests
         public FakeHistory History { get; } = new();
         public FakeStations Stations { get; } = new();
         public StopService Stops { get; } = new();
+        public Budget BudgetState { get; } = new();
         public FakeRelease Release { get; } = new();
+        public Updater StationUpdate { get; } = new();
         public CopyText Text { get; } = new();
         public MainViewModel Vm { get; }
 
@@ -40,7 +45,7 @@ public class MainViewModelTests
         {
             Settings = new FakeSettings(initial ?? new AppSettings(CheckUpdatesEnabled: false));
             Vm = new MainViewModel(Stations, Query, Stops, new ExtensionService(), Settings,
-                new Budget(), Text, new Links(), Session, Book, History, new Updater(), Transfer, Release);
+                BudgetState, Text, new Links(), Session, Book, History, StationUpdate, Transfer, Release);
         }
 
         /// <summary>选好两站，走的就是界面那条提交路径：列表选中项 → 视图模型属性。</summary>
@@ -162,7 +167,7 @@ public class MainViewModelTests
             public Station? FindByTelecode(string telecode) => AllStations.FirstOrDefault(s => s.Telecode == telecode);
             public Station? FindByName(string name) => AllStations.FirstOrDefault(s => s.Name == name);
 
-            private static readonly Station[] AllStations = [Beijing, Nanjing, Shanghai];
+            private static readonly Station[] AllStations = [Beijing, BeijingWest, Nanjing, Shanghai];
         }
 
         public sealed class FakeRelease : IReleaseFeed
@@ -180,13 +185,21 @@ public class MainViewModelTests
 
         public sealed class Budget : IQueryBudget
         {
-            public int DailyRemaining => 197;
+            /// <summary>可改：FR-43 要求"选中即取"之后额度数字必须跟着动。</summary>
+            public int DailyRemaining { get; set; } = 197;
         }
 
         public sealed class Updater : IStationTableUpdater
         {
-            public Task<StationTableUpdateResult> UpdateAsync(CancellationToken ct = default) =>
-                Task.FromResult(new StationTableUpdateResult(true, 3404, new DateOnly(2026, 10, 12), null));
+            public bool Ok = true;
+            public int Calls;
+            public Task<StationTableUpdateResult> UpdateAsync(CancellationToken ct = default)
+            {
+                Calls++;
+                return Task.FromResult(Ok
+                    ? new StationTableUpdateResult(true, 3404, new DateOnly(2026, 10, 12), null)
+                    : new StationTableUpdateResult(false, 0, new DateOnly(2026, 10, 10), "官方没返回站点表，旧的那份继续用。"));
+            }
         }
 
         public sealed class Links : IOfficialLinkProvider
@@ -301,6 +314,262 @@ public class MainViewModelTests
         await h.Vm.QueryAsync(default);
         Assert.Equal(1, h.Query.Calls);
         Assert.Equal(ViewState.Results, h.Vm.State);
+    }
+
+
+    // ── FR-45：站名唯一命中自动选定 ────────────────────────────
+
+    [Fact]
+    public void 打出的字与某站站名完全相同时不再要求点一下()
+    {
+        var h = new Harness();
+
+        h.Vm.FromText = "北京南";
+
+        Assert.Equal(Beijing.Telecode, h.Vm.FromPick?.Telecode);
+        Assert.Equal("北京南", h.Vm.FromText);
+        Assert.Empty(h.Vm.FromCandidates);      // 选定后弹层收起，与手动点选同形
+    }
+
+    [Fact]
+    public void 候选只剩一条时自动选定()
+    {
+        var h = new Harness();
+
+        h.Vm.FromText = "南京";               // 码表里只有南京南
+
+        Assert.Equal(Nanjing.Telecode, h.Vm.FromPick?.Telecode);
+    }
+
+    [Fact]
+    public void 有歧义时一律不替用户选站()
+    {
+        // "北京"命中北京南与北京西，谁也不该被自动选走：选错一站，
+        // 结果表会看起来完全正常，而它是根据另一个站查出来的（NFR-18 反对的形状）。
+        var h = new Harness();
+
+        h.Vm.FromText = "北京";
+
+        Assert.Null(h.Vm.FromPick);
+        Assert.Equal(2, h.Vm.FromCandidates.Count);
+    }
+
+    [Fact]
+    public async Task 自动选定不发请求也不改结果区()
+    {
+        var h = new Harness();
+
+        h.Vm.FromText = "北京南";
+        h.Vm.ToText = "上海虹桥";
+        await h.Vm.QueryAsync(default);            // 用户真的点了查询才有第一个请求
+
+        Assert.Equal(1, h.Query.Calls);
+        Assert.Equal(ViewState.Results, h.Vm.State);
+    }
+
+    // ── FR-43：选中即显示经停 ──────────────────────────────────
+
+    [Fact]
+    public async Task 选中一行就自己把经停取回来()
+    {
+        var h = new Harness();
+        h.Query.Result = [Journey("G1"), Journey("G3")];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+
+        h.Vm.Selected = h.Vm.Rows[0];
+
+        Assert.Equal(1, h.Stops.Calls);
+        Assert.True(h.Vm.HasStops);
+    }
+
+    [Fact]
+    public async Task 来回点选同一趟不重复花额度()
+    {
+        var h = new Harness();
+        h.Query.Result = [Journey("G1"), Journey("G3")];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+
+        h.Vm.Selected = h.Vm.Rows[0];
+        h.Vm.Selected = h.Vm.Rows[1];
+        h.Vm.Selected = h.Vm.Rows[0];
+        h.Vm.Selected = h.Vm.Rows[1];
+
+        Assert.Equal(2, h.Stops.Calls);            // 两趟各取一次，之后都用手里那份
+    }
+
+    [Fact]
+    public async Task 详情区隐藏时选中不取数()
+    {
+        // 花掉一次官方额度却渲染不出任何东西，是纯浪费（FR-40 与 FR-43 的接口）。
+        var h = new Harness();
+        h.Query.Result = [Journey("G1")];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+        h.Vm.ShowDetail = false;
+
+        h.Vm.Selected = h.Vm.Rows[0];
+
+        Assert.Equal(0, h.Stops.Calls);
+    }
+
+    [Fact]
+    public async Task 隐藏时点某行的经停按钮会先显示再取数()
+    {
+        var h = new Harness();
+        h.Query.Result = [Journey("G1"), Journey("G3")];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+        h.Vm.ShowDetail = false;
+
+        h.Vm.Rows[1].LoadStopsCommand.Execute(null);
+
+        Assert.True(h.Vm.ShowDetail);
+        Assert.Equal("G3", h.Vm.Selected?.TrainCode);
+        Assert.Equal(1, h.Stops.Calls);
+    }
+
+    [Fact]
+    public async Task 未选中的行点按钮也能出数()
+    {
+        var h = new Harness();
+        h.Query.Result = [Journey("G1"), Journey("G3")];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+
+        h.Vm.Rows[1].LoadStopsCommand.Execute(null);
+
+        Assert.Equal("G3", h.Vm.Selected?.TrainCode);
+        Assert.True(h.Vm.HasStops);
+    }
+
+    [Fact]
+    public async Task 取完经停后剩余额度跟着刷新()
+    {
+        var h = new Harness();
+        h.Query.Result = [Journey("G1")];
+        h.Ready();
+        h.Text.Map = key => key == "状态_剩余额度" ? "今日还可查询 {0} 次" : key;
+        await h.Vm.QueryAsync(default);
+        h.BudgetState.DailyRemaining = 196;
+
+        h.Vm.Selected = h.Vm.Rows[0];
+
+        Assert.Contains("196", h.Vm.DailyRemainingText);
+    }
+
+    // ── FR-42：表头排序 ────────────────────────────────────────
+
+    [Fact]
+    public async Task 点表头与下拉选同一个键排出同样顺序()
+    {
+        var h = new Harness();
+        h.Query.Result = [Journey("G1", 400m), Journey("G3", 200m), Journey("G7", 300m)];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+
+        h.Vm.SortByPriceCommand.Execute(null);
+        var byHeader = h.Vm.Rows.Select(r => r.TrainCode).ToList();
+
+        h.Vm.SelectedSort = h.Vm.SortOptions.First(o => o.Value == SortKey.LowestPrice);
+        var byDropdown = h.Vm.Rows.Select(r => r.TrainCode).ToList();
+
+        Assert.Equal(["G3", "G7", "G1"], byHeader);
+        Assert.Equal(byHeader, byDropdown);
+    }
+
+    [Fact]
+    public async Task 出发表头再点一次换成最晚出发且标记跟着翻()
+    {
+        var h = new Harness();
+        h.Query.Result = [Journey("G1"), Journey("G3")];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+
+        Assert.Equal("表头_升序", h.Vm.FromSortMarker);      // 默认就是最早出发
+
+        h.Vm.SortByDepartureCommand.Execute(null);
+        Assert.Equal(SortKey.DepartureLatest, h.Vm.SortKey);
+        Assert.Equal("表头_降序", h.Vm.FromSortMarker);
+
+        h.Vm.SortByPriceCommand.Execute(null);
+        Assert.Equal(string.Empty, h.Vm.FromSortMarker);     // 不生效的列不留标记
+        Assert.Equal("表头_升序", h.Vm.PriceSortMarker);
+    }
+
+    // ── FR-41：更新码表后的重启标记 ────────────────────────────
+
+    [Fact]
+    public async Task 码表更新成功才要求重启()
+    {
+        var h = new Harness();
+
+        await h.Vm.UpdateStationsAsync(default);
+
+        Assert.True(h.Vm.StationUpdateNeedsRestart);
+        Assert.NotEmpty(h.Vm.StationUpdateNote);
+    }
+
+    [Fact]
+    public async Task 码表更新失败时不弹重启也不报成功()
+    {
+        var h = new Harness();
+        h.StationUpdate.Ok = false;
+
+        await h.Vm.UpdateStationsAsync(default);
+
+        Assert.False(h.Vm.StationUpdateNeedsRestart);
+        Assert.Equal(string.Empty, h.Vm.StationUpdateNote);
+        Assert.Equal("官方没返回站点表，旧的那份继续用。", h.Vm.BookStatus);
+    }
+
+    [Fact]
+    public async Task 问过用户之后重启标记就落下()
+    {
+        var h = new Harness();
+        await h.Vm.UpdateStationsAsync(default);
+
+        h.Vm.AcknowledgeStationUpdate();
+
+        Assert.False(h.Vm.StationUpdateNeedsRestart);
+    }
+
+    // ── FR-40：面板显隐 ────────────────────────────────────────
+
+    [Fact]
+    public void 四个面板默认都显示且能单独关()
+    {
+        var h = new Harness();
+
+        Assert.True(h.Vm.ShowSidebar && h.Vm.ShowFilters && h.Vm.ShowDetail && h.Vm.ShowInfoBar);
+
+        h.Vm.ShowSidebar = false;
+        Assert.False(h.Vm.ShowSidebar);
+        Assert.True(h.Vm.ShowFilters);            // 关一个不该牵连别人
+    }
+
+    [Fact]
+    public void 详情区折叠按钮的字跟着显隐走()
+    {
+        var h = new Harness();
+
+        Assert.Equal("按钮_折叠", h.Vm.DetailToggleGlyph);
+        h.Vm.ShowDetail = false;
+        Assert.Equal("按钮_展开", h.Vm.DetailToggleGlyph);
+    }
+
+    [Fact]
+    public void 菜单与设置页读的是同一个主题档位()
+    {
+        var h = new Harness();
+
+        h.Vm.Theme = ThemeChoice.Dark;
+
+        Assert.True(h.Vm.ThemeDark);
+        Assert.False(h.Vm.ThemeLight);
+        Assert.False(h.Vm.ThemeFollows);
+        Assert.Equal(ThemeChoice.Dark, h.Settings.Current.Theme);
     }
 
     // ── 本地校验与频率红线 ─────────────────────────────────────
