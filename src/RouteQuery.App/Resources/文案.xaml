@@ -86,6 +86,7 @@
     <sys:String x:Key="席别_一等座">一等座</sys:String>
     <sys:String x:Key="席别_二等座">二等座</sys:String>
     <sys:String x:Key="席别_特等座">特等座</sys:String>
+    <sys:String x:Key="席别_优选一等座">优选一等座</sys:String>
     <sys:String x:Key="席别_高级软卧">高级软卧</sys:String>
     <sys:String x:Key="席别_软卧">软卧/动卧/一等卧</sys:String>
     <sys:String x:Key="席别_硬卧">硬卧/二等卧</sys:String>
@@ -155,7 +156,6 @@
     <sys:String x:Key="设置_位置">这些文件都在：%LOCALAPPDATA%\RouteQuery</sys:String>
     <sys:String x:Key="关于_标题">关于</sys:String>
     <sys:String x:Key="关于_版本">版本 {0}</sys:String>
-    <sys:String x:Key="按钮_设置">设置</sys:String>
     <sys:String x:Key="声明_再看">再看一次使用说明</sys:String>
     <sys:String x:Key="按钮_关闭">关闭</sys:String>
 

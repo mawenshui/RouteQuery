@@ -45,6 +45,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     private SortKey _sortKey = SortKey.DepartureEarliest;
     private int _maxStations = 3;
     private string _extensionStatus = string.Empty;
+    private string _detailHint = string.Empty;
     private int _dailyRemaining;
     private bool _showSidebar = true;
     private bool _showFilters = true;
@@ -160,8 +161,17 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     public string BookStatus
     {
         get => _bookStatus;
-        private set { if (Set(ref _bookStatus, value)) Raise(nameof(BookStatus)); }
+        private set
+        {
+            if (!Set(ref _bookStatus, value)) return;
+            Raise(nameof(BookStatus), nameof(BookLevel), nameof(BookHasNotice));
+        }
     }
+
+    /// <summary>侧栏那条反馈该用哪一级样式（FR-46）。</summary>
+    public string BookLevel => LevelOf(BookStatus);
+
+    public bool BookHasNotice => BookStatus.Length > 0;
 
     private string _bookStatus = string.Empty;
 
@@ -250,8 +260,16 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     public string TransferStatus
     {
         get => _transferStatus;
-        private set { if (Set(ref _transferStatus, value)) Raise(nameof(TransferStatus), nameof(HasTransfers)); }
+        private set
+        {
+            if (!Set(ref _transferStatus, value)) return;
+            Raise(nameof(TransferStatus), nameof(TransferLevel), nameof(TransferHasNotice), nameof(HasTransfers));
+        }
     }
+
+    public string TransferLevel => LevelOf(_transferStatus);
+
+    public bool TransferHasNotice => _transferStatus.Length > 0;
 
     private string _transferStatus = string.Empty;
 
@@ -726,7 +744,56 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     /// <summary>经停表是否有内容。空表会被读成"这趟车只停两站"，所以空时必须换成一句说明（FR-14 边界）。</summary>
     public bool HasStops => Stops.Count > 0;
 
-    public string DetailHint { get; private set; } = string.Empty;
+    /// <summary>
+    /// 反馈分级（FR-46）。判法是"这句话是不是那条警示/错误文案"，
+    /// 而不是在二十个赋值点各记一遍级别——记二十遍一定会漏一处，而漏掉的那处只会用小灰字显示，
+    /// 也就是这次反馈里最没用的那种形态。
+    /// </summary>
+    private string LevelOf(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return "hint";
+        foreach (var key in WarnTexts)
+            if (string.Equals(text, _text.Get(key), StringComparison.Ordinal)) return "warn";
+        foreach (var key in ErrorTexts)
+            if (string.Equals(text, _text.Get(key), StringComparison.Ordinal)) return "error";
+        return "hint";
+    }
+
+    /// <summary>需要用户做点什么，但事情没失败。</summary>
+    private static readonly string[] WarnTexts =
+        ["收藏_已满", "收藏_站已不在", "错误_太频繁", "错误_今日太多", "错误_正在查询", "扩展_中止", "扩展_未查完"];
+
+    /// <summary>这件事做不到，必须给下一步。</summary>
+    private static readonly string[] ErrorTexts =
+    [
+        "错误_网络不可用", "错误_超时", "错误_被拒绝", "错误_格式变更", "错误_数据缺失", "错误_站点数据缺失",
+        "中转_会话失效", "跳转_失败",
+    ];
+
+    /// <summary>直达区域内"这个日期没有直达车次"那句话（FR-47：它属于结果区，不属于窗口顶部）。</summary>
+    public string EmptyResultText => _text.Get("状态_无结果");
+
+    /// <summary>查询成功但官方给的是零趟。空态必须显示在直达区域内。</summary>
+    public bool IsEmptyResult => State == ViewState.Results && Rows.Count == 0;
+
+    /// <summary>"共 x 趟车"——贴在表头一侧，不再挤在窗口最上方（FR-48）。</summary>
+    public string ResultCountText => string.Format(_text.Get("状态_结果数"), Rows.Count);
+
+    /// <summary>详情区那句话。以前它是个不通知的自动属性：填上经停表后"该说的话"变了，
+    /// 界面却还挂着上一句——反馈条要按它决定显示与样式，所以必须会通知。</summary>
+    public string DetailHint
+    {
+        get => _detailHint;
+        private set
+        {
+            if (!Set(ref _detailHint, value)) return;
+            Raise(nameof(DetailHint), nameof(DetailLevel), nameof(HasDetailNotice));
+        }
+    }
+
+    public string DetailLevel => LevelOf(DetailHint);
+
+    public bool HasDetailNotice => DetailHint.Length > 0;
 
     public int DailyRemaining
     {
@@ -885,6 +952,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
         var sorted = JourneySorter.Apply(filtered, SortKey);
 
         Rows.Clear();
+        Raise(nameof(IsEmptyResult), nameof(ResultCountText));
         foreach (var j in sorted)
         {
             var row = new JourneyRowViewModel(j, _text, DateTimeOffset.Now);
@@ -893,6 +961,7 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
             row.AttachLoadStops(new Mvvm.AsyncCommand(ct => LoadStopsFromRowAsync(row, ct)));
             Rows.Add(row);
         }
+        Raise(nameof(IsEmptyResult), nameof(ResultCountText));
 
         State = sorted.Count > 0 ? ViewState.Results
             : Raw.Count == 0 ? ViewState.Results
@@ -1174,8 +1243,16 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
     public string ExtensionStatus
     {
         get => _extensionStatus;
-        private set { if (Set(ref _extensionStatus, value)) Raise(nameof(ExtensionStatus)); }
+        private set
+        {
+            if (!Set(ref _extensionStatus, value)) return;
+            Raise(nameof(ExtensionStatus), nameof(ExtensionLevel), nameof(ExtensionHasNotice));
+        }
     }
+
+    public string ExtensionLevel => LevelOf(_extensionStatus);
+
+    public bool ExtensionHasNotice => _extensionStatus.Length > 0;
 
     internal async Task RunExtensionAsync(CancellationToken ct)
     {

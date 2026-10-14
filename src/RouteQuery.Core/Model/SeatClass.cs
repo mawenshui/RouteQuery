@@ -7,8 +7,11 @@ namespace RouteQuery.Core.Model;
 /// </summary>
 public enum SeatClass
 {
-    /// <summary>gg_num（列 20）。官方页面无独立展示列，中文标签未确认。</summary>
-    Unknown20,
+    /// <summary>
+    /// gg_num（列 20）= <b>优选一等座</b>。2026-10-14 实测确认：官方结果表该列表头写"优选一等座"，
+    /// 单元格 DOM id 前缀为 <c>GG_</c>，同一行票价串里商务/一等/二等逐值对得上（SPEC-007 v1.8）。
+    /// </summary>
+    PremiumFirstClass,
 
     /// <summary>gr_num（列 21）高级软卧。</summary>
     PremiumSoftSleeper,

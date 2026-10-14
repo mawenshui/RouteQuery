@@ -33,29 +33,13 @@ public sealed class JourneyRowViewModel(TrainJourney journey, ITextProvider text
         !string.Equals(Model.To.Name, Model.EndStation.Name, StringComparison.Ordinal);
 
     /// <summary>
-    /// 席别摘要：最多三个有代表性的席别，形如"二等 有 · 一等 候补 · 商务 3"。
-    /// 有票的排前面，其次候补，最后无票——用户扫一眼就该看到能买的那个。
+    /// 官方给出的全部席别，每条带自己的余票与票价（FR-49）。
+    /// 一行一个而不是挤成一句：挤成一句就要"摘选"，而摘选正是"数据不如官网全"的来源。
     /// </summary>
-    public string SeatSummary
-    {
-        get
-        {
-            var ordered = Model.Seats
-                .OrderBy(s => s.State switch
-                {
-                    SeatState.Available => 0,
-                    SeatState.Waitlist => 1,
-                    SeatState.NotYetOnSale => 2,
-                    _ => 3,
-                })
-                .ThenBy(s => s.Class)
-                .Take(3)
-                .Select(s => $"{SeatLabel(s.Class)} {StateLabel(s.State)}");
+    public IReadOnlyList<string> SeatLines => SeatTexts.Lines(Model.Seats, text);
 
-            var joined = string.Join(" · ", ordered);
-            return string.IsNullOrWhiteSpace(joined) ? text.Get("提示_官方未给出") : joined;
-        }
-    }
+    /// <summary>整句形式，给不需要逐行排的场合（如状态文本）。</summary>
+    public string SeatSummary => SeatTexts.Summary(Model.Seats, text);
 
     /// <summary>最低价文本。缺价必须写明"官方未给出"，不能留一个破折号让人猜是没价还是没票（NFR-18）。</summary>
     public string LowestPriceText => Model.LowestPrice is { } p ? $"¥{p:0.##}" : text.Get("提示_无官方数据");

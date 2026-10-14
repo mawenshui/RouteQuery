@@ -101,6 +101,42 @@ public class XamlBindingGuardTests
         }
     }
 
+    /// <summary>
+    /// "设置"入口全站只留一处（FR-48）。
+    /// <para>两个入口一定会漂出两个行为：这次就是把设置提到菜单一级时，
+    /// 顶部那个按钮如果留着，就会出现"点了按钮开的窗口和菜单开的不一样"。</para>
+    /// </summary>
+    [Fact]
+    public void 设置入口全站只能有一处()
+    {
+        // 文案.xaml 是"定义处"，不是入口；数的是界面里挂了这个键的地方。
+        var 命中 = Tagged(AppDir, "*.xaml")
+            .Where(x => x.File != "文案.xaml")
+            .SelectMany(x => System.Text.RegularExpressions.Regex
+                .Matches(x.Text, "菜单_设置|按钮_设置")
+                .Select(m => $"{x.File}:{m.Value}"))
+            .ToList();
+
+        Assert.Single(命中);
+        Assert.EndsWith("菜单_设置", 命中[0]);
+    }
+
+    /// <summary>
+    /// 反馈条四个级别都得有各自的底色键（FR-46）。
+    /// 少一个键不会报错，只会让那一级悄悄用回提示级的底色——于是"错误"看起来不像错误。
+    /// </summary>
+    [Fact]
+    public void 反馈条的每个级别都要换到自己的底色键()
+    {
+        var 主题 = File.ReadAllText(Path.Combine(AppDir, "Resources", "主题.xaml"));
+        var i = 主题.IndexOf("<Style x:Key=\"反馈条\"", StringComparison.Ordinal);
+        Assert.True(i >= 0, "样式字典里没有 反馈条");
+        var 段 = 主题[i..主题.IndexOf("</Style>", i, StringComparison.Ordinal)];
+
+        foreach (var 键 in new[] { "渐变_徽标底", "渐变_提醒底", "渐变_错误底", "笔刷_底上文字" })
+            Assert.Contains(键, 段);
+    }
+
     [Fact]
     public void 学生票与儿童票只许出现在那句口径说明里()
     {

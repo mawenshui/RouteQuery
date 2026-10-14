@@ -48,7 +48,9 @@ public static class SeatCodeMap
         ["1"] = Core.Model.SeatClass.HardSeat,
         ["2"] = Core.Model.SeatClass.SoftSeat,
         ["P"] = Core.Model.SeatClass.SoftSleeper,
-        ["A"] = Core.Model.SeatClass.FirstClass,
+        // 短码 A 的中文名本来就是"优选一等座"（见上方 Labels），再把它对齐到一等座
+        // 就会让"优选一等"的价格挂在"一等座"那一行上——同一个短码在两张表里说两种话。
+        ["A"] = Core.Model.SeatClass.PremiumFirstClass,
         ["F"] = Core.Model.SeatClass.Other,
     };
 

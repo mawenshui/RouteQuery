@@ -35,8 +35,6 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <Menu Grid.Column="0" Background="Transparent" VerticalAlignment="Center">
@@ -64,8 +62,9 @@
                         <MenuItem Header="{DynamicResource 主题_深色}" IsCheckable="True"
                                   IsChecked="{Binding ThemeDark, Mode=OneWay}" Click="Theme_Click" Tag="深色"/>
                     </MenuItem>
+                    <!-- 设置是一级项，不藏在"帮助"里：它是日常要动的地方，不是求助入口（FR-48）。 -->
+                    <MenuItem Header="{DynamicResource 菜单_设置}" Click="Settings_Click"/>
                     <MenuItem Header="{DynamicResource 菜单_帮助}">
-                        <MenuItem Header="{DynamicResource 菜单_设置}" Click="Settings_Click"/>
                         <MenuItem Header="{DynamicResource 菜单_发布页}" Click="OpenRelease_Click"/>
                         <MenuItem Header="{DynamicResource 菜单_再看声明}" Click="ShowStatement_Click"/>
                     </MenuItem>
@@ -87,21 +86,16 @@
                            VerticalAlignment="Center" Margin="16,0,8,0" TextTrimming="CharacterEllipsis"
                            Visibility="{Binding ShowInfoBar, Converter={StaticResource BoolVis}}"/>
 
-                <TextBlock Grid.Column="3" Text="{Binding DailyRemainingText}" VerticalAlignment="Center"
-                           Margin="8,0" FontSize="11"
-                           Visibility="{Binding ShowInfoBar, Converter={StaticResource BoolVis}}"/>
-
-                <Button Grid.Column="4" Content="{Binding UpdateNote}" Padding="10,2" Margin="8,0,0,0"
+                <Button Grid.Column="3" Content="{Binding UpdateNote}" Padding="10,2" Margin="8,0,0,0"
                         FontSize="11" Foreground="{DynamicResource 笔刷_成功}" Background="Transparent" BorderThickness="0"
                         Click="OpenRelease_Click" VerticalAlignment="Center"
                         Visibility="{Binding HasUpdateNote, Converter={StaticResource BoolVis}}"/>
 
-                <TextBlock Grid.Column="5" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"
-                           VerticalAlignment="Center" Margin="12,0"
+                <TextBlock Grid.Column="4" Text="{DynamicResource 声明_非官方}" Style="{StaticResource HintText}"
+                           VerticalAlignment="Center" Margin="12,0,2,0"
                            Visibility="{Binding ShowInfoBar, Converter={StaticResource BoolVis}}"/>
 
-                <Button Grid.Column="6" Content="{DynamicResource 按钮_设置}" Padding="10,2" Margin="0,0,2,0"
-                        VerticalAlignment="Center" Click="Settings_Click"/>
+
             </Grid>
         </Border>
 
@@ -159,9 +153,12 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <!-- 收藏/回填的反馈：只有几行字，但它必须出现在动作发生的地方，而不是跑到状态栏去 -->
-        <TextBlock Grid.Row="4" Margin="0,8,0,0" Text="{Binding BookStatus}" TextWrapping="Wrap"
-                   FontSize="11" Style="{StaticResource HintText}"/>
+        <!-- 收藏与回填的反馈就在这一区里（FR-47）：点"收藏这一程"之后眼睛就在这块，
+             不在窗口左下角的一行小灰字上。收藏已满这类是警示级，会换成提醒底。 -->
+        <Border Grid.Row="4" Style="{StaticResource 反馈条}" Tag="{Binding BookLevel}"
+                Visibility="{Binding BookHasNotice, Converter={StaticResource BoolVis}}">
+            <TextBlock Text="{Binding BookStatus}" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
     </Grid>
 
     <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch"
@@ -254,10 +251,16 @@
             </StackPanel>
 
             <TextBlock Grid.Column="5" Text="{DynamicResource 提示_可查范围}"
-                       Style="{StaticResource HintText}" Margin="10,0"/>
+                       Style="{StaticResource HintText}" Margin="10,0" VerticalAlignment="Center"/>
 
-            <Button Grid.Column="6" Content="{Binding QueryButtonText}" MinWidth="96" Padding="12,6"
-                    Command="{Binding QueryCommand}" Margin="6,0"/>
+            <!-- 额度紧贴查询按钮：它约束的就是"点查询"和"点行取经停"这两个动作，
+                 放在窗口另一头等于离动作最远的地方（FR-48）。 -->
+            <StackPanel Grid.Column="6" Orientation="Horizontal" Margin="6,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding DailyRemainingText}" Style="{StaticResource HintText}"
+                           VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                <Button Content="{Binding QueryButtonText}" MinWidth="96" Padding="12,6"
+                        Command="{Binding QueryCommand}"/>
+            </StackPanel>
 
             <Button Grid.Column="7" Content="{DynamicResource 按钮_取消}" MinWidth="72" Padding="12,6"
                     Visibility="{Binding IsLoading, Converter={StaticResource BoolVis}}"
@@ -309,10 +312,10 @@
                     </StackPanel>
 
                     <!-- 车次列表 -->
-                    <ListView x:Name="ResultList" ItemsSource="{Binding Rows}"
+                    <ListView x:Name="ResultList" Margin="0,20,0,40" ItemsSource="{Binding Rows}"
                               SelectedItem="{Binding Selected, Mode=TwoWay}"
                               BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                              VirtualizingPanel.IsVirtualizing="True" Margin="0,0,0,40"
+                              VirtualizingPanel.IsVirtualizing="True"
                               Visibility="{Binding State, Converter={StaticResource StateVis}, ConverterParameter=Results}">
                                 <ListView.Template>
                                     <ControlTemplate TargetType="ListView">
@@ -414,10 +417,18 @@
                                         <Run Text="{Binding ArrivalText, Mode=OneWay}"/><Run Text="  "/><Run Text="{Binding ToName, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding ArrivalDayNote, Mode=OneWay}" Foreground="{DynamicResource 笔刷_错误}"/>
                                     </TextBlock>
                                     <TextBlock Grid.Column="3" Text="{Binding DurationText}" VerticalAlignment="Center"/>
+                                    <!-- 官方给的每个席别都摆出来，各带自己的余票与票价（FR-49）。
+                                         一行一条而不是挤成一句：挤成一句就得"摘选"，
+                                         而摘选掉的正是用户抱怨"不齐全"的那些。 -->
                                     <StackPanel Grid.Column="4" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding SeatSummary}"
-                                                   Style="{StaticResource 席别文字}"
-                                                   TextTrimming="CharacterEllipsis"/>
+                                        <ItemsControl ItemsSource="{Binding SeatLines}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" Style="{StaticResource 席别文字}"
+                                                               TextWrapping="Wrap"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <TextBlock Text="{Binding OnSaleText}" FontSize="11"
                                                    Style="{StaticResource HintText}"
                                                    Visibility="{Binding IsNotYetOnSale, Converter={StaticResource BoolVis}}"/>
@@ -445,6 +456,19 @@
                                VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="620"
                                TextAlignment="Center" FontSize="14"
                                Visibility="{Binding State, Converter={StaticResource StateVis}, ConverterParameter=FilteredEmpty}"/>
+
+                    <!-- 官方给了零趟：这句话属于结果区，不属于窗口顶部（FR-47）。
+                         字号与"还没有查询"同一档——同一类"这里没有东西"就该长一个样。 -->
+                    <TextBlock Text="{Binding EmptyResultText}" TextWrapping="Wrap" Margin="24"
+                               VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="620"
+                               TextAlignment="Center" FontSize="14"
+                               Visibility="{Binding IsEmptyResult, Converter={StaticResource BoolVis}}"/>
+
+                    <!-- "共 x 趟车"贴在表上方（FR-48）：它说的是这张表有几行。 -->
+                    <!-- 列表让出 20 像素顶边，这句就落在表上方而不是压在"操作"两个字上。 -->
+                    <TextBlock Text="{Binding ResultCountText}" Style="{StaticResource HintText}" FontSize="11"
+                               HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,6,0"
+                               Visibility="{Binding HasResults, Converter={StaticResource BoolVis}}"/>
                 </Grid>
             </TabItem>
 
@@ -464,8 +488,11 @@
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
                             <Button Content="{DynamicResource 中转_查询}" Padding="14,5"
                                     Command="{Binding TransferQueryCommand}"/>
-                            <TextBlock Text="{Binding TransferStatus}" Margin="14,0,0,0"
-                                       VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="620"/>
+                            <Border Style="{StaticResource 反馈条}" Tag="{Binding TransferLevel}" Margin="14,0,0,0"
+                                    VerticalAlignment="Center" MaxWidth="620"
+                                    Visibility="{Binding TransferHasNotice, Converter={StaticResource BoolVis}}">
+                                <TextBlock Text="{Binding TransferStatus}" TextWrapping="Wrap" FontSize="12"/>
+                            </Border>
                         </StackPanel>
                         <TextBlock DockPanel.Dock="Bottom" Text="{DynamicResource 中转_说明}" TextWrapping="Wrap"
                                    Margin="0,8,0,0" FontSize="11" Style="{StaticResource HintText}"/>
@@ -605,9 +632,13 @@
                                             </GridView>
                                         </ListView.View>
                                     </ListView>
-                                    <TextBlock Text="{Binding DetailHint}" VerticalAlignment="Center" HorizontalAlignment="Center"
-                                               TextWrapping="Wrap" MaxWidth="380" TextAlignment="Center"
-                                               Visibility="{Binding HasStops, Converter={StaticResource BoolVis}, ConverterParameter=invert}"/>
+                                    <!-- 取不到经停是错误，不是"这里刚好没字"：错误级样式，写在这块区域里（FR-46/47）。 -->
+                                    <Border Style="{StaticResource 反馈条}" Tag="{Binding DetailLevel}"
+                                            VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400"
+                                            Visibility="{Binding HasDetailNotice, Converter={StaticResource BoolVis}}">
+                                        <TextBlock Text="{Binding DetailHint}" TextWrapping="Wrap"
+                                                   TextAlignment="Center" FontSize="12"/>
+                                    </Border>
                                 </Grid>
                             </GroupBox>
 
@@ -623,7 +654,10 @@
                                     </StackPanel>
 
                                     <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                                        <TextBlock Text="{Binding ExtensionStatus}" Style="{StaticResource HintText}" TextWrapping="Wrap"/>
+                                        <Border Style="{StaticResource 反馈条}" Tag="{Binding ExtensionLevel}"
+                                                Visibility="{Binding ExtensionHasNotice, Converter={StaticResource BoolVis}}">
+                                            <TextBlock Text="{Binding ExtensionStatus}" TextWrapping="Wrap" FontSize="12"/>
+                                        </Border>
                                         <TextBlock Text="{Binding ExtensionDisclaimer}" Margin="0,4,0,0" FontSize="11" Style="{StaticResource HintText}" TextWrapping="Wrap"/>
                                     </StackPanel>
 

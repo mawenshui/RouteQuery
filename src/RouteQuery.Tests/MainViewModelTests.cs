@@ -317,6 +317,33 @@ public class MainViewModelTests
     }
 
 
+    // ── FR-49：席别与票价全量呈现 ────────────────────────────
+
+    [Fact]
+    public void 官方给的每个席别都摆出来并带上自己的票价()
+    {
+        // 这条测的是"不丢弃"。以前只挑前三个显示，官方给五个就少两个，
+        // 而用户对照官网看到的正是这个缺口。
+        var seats = new[]
+        {
+            new SeatAvailability(SeatClass.BusinessClass, "12", SeatState.Available, 2337m),
+            new SeatAvailability(SeatClass.PremiumFirstClass, "候补", SeatState.Waitlist, 1434m),
+            new SeatAvailability(SeatClass.SecondClass, "有", SeatState.Available, 667m),
+            new SeatAvailability(SeatClass.Standing, "有", SeatState.Available, null),
+        };
+        var journey = new TrainJourney("G3", "24000000G320", Beijing, Shanghai, Beijing, Shanghai,
+            new TimeSpan(6, 52, 0), new TimeSpan(11, 33, 0), new TimeSpan(4, 41, 0),
+            false, PurchaseState.Buyable, seats, null);
+
+        var row = new JourneyRowViewModel(journey, new Harness.CopyText(), DateTimeOffset.Now);
+
+        Assert.Equal(4, row.SeatLines.Count);
+        Assert.Contains(row.SeatLines, l => l.Contains("席别_商务座") && l.Contains("2337"));
+        Assert.Contains(row.SeatLines, l => l.Contains("席别_优选一等座"));      // 列 20 已有真名
+        Assert.Contains(row.SeatLines, l => l.Contains("提示_无官方数据"));      // 没给价就明写
+        Assert.DoesNotContain(row.SeatLines, l => l.Contains("席别_未确认"));
+    }
+
     // ── FR-45：站名唯一命中自动选定 ────────────────────────────
 
     [Fact]

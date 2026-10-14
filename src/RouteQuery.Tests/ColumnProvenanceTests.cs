@@ -18,8 +18,10 @@ public class ColumnProvenanceTests
             .Select(x => x.Class)
             .ToList();
 
-        // 三列中文标签未确认，处于 Unverified：它们不会进入筛选与排序依赖的席别集合。
-        Assert.Equal([SeatClass.Unknown20, SeatClass.Unknown27, SeatClass.Unknown33], judged);
+        // 列 20 已确认为"优选一等座"，但来源是页面观察而非官脚本书证，所以仍与另外两列一起
+        // 落在"非官方脚本"这一组里——这条断言守的是"哪些列的证据强度还不足以被当作权威"。
+        // 列 27 / 33 中文标签仍未确认（Unverified），界面写"未确认席别"。
+        Assert.Equal([SeatClass.PremiumFirstClass, SeatClass.Unknown27, SeatClass.Unknown33], judged);
     }
 
     [Fact]

@@ -49,9 +49,10 @@ public static class LeftTicketColumnLayout
     // ── 余票：列 20 至 33，官方字段名为键 ──────────────────────
     /// <summary>
     /// 余票权威列。值为 <c>有</c> / <c>无</c> / 数字 / <c>*</c> / 空。
-    /// <para><see cref="SeatClass.Unknown20"/>、<see cref="SeatClass.Unknown27"/>、
-    /// <see cref="SeatClass.Unknown33"/> 三列官方页面没有独立展示列，中文标签未确认，
-    /// 因此标记为 <see cref="ColumnProvenance.Unverified"/>：只透传，不参与筛选与排序。</para>
+    /// <para><see cref="SeatClass.PremiumFirstClass"/>（列 20）已按官方页面的列头与单元格 id 确认为"优选一等座"
+    /// （SPEC-007 v1.8），来源类型是观察确认而非官脚本书证。<see cref="SeatClass.Unknown27"/> 与
+    /// <see cref="SeatClass.Unknown33"/> 两列官方没有给出展示列，中文标签仍未确认，
+    /// 因此标记为 <see cref="ColumnProvenance.Unverified"/>：只透传，界面写"未确认席别"。</para>
     /// </summary>
     public static readonly (SeatClass Class, ColumnSpec Spec)[] AvailabilityColumns =
     [
@@ -66,7 +67,7 @@ public static class LeftTicketColumnLayout
         (SeatClass.HardSeat,             new(29)),   // yz_num
         (SeatClass.Standing,             new(26)),   // wz_num
         (SeatClass.Other,                new(22)),   // qt_num
-        (SeatClass.Unknown20,            new(20, Provenance: ColumnProvenance.Unverified)),   // gg_num
+        (SeatClass.PremiumFirstClass,    new(20, Provenance: ColumnProvenance.ConfirmedByObservation)),   // gg_num 优选一等座
         (SeatClass.Unknown27,            new(27, Provenance: ColumnProvenance.Unverified)),   // yb_num
         (SeatClass.Unknown33,            new(33, Provenance: ColumnProvenance.Unverified)),   // srrb_num
     ];

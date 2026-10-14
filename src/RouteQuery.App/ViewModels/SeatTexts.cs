@@ -23,7 +23,8 @@ public static class SeatTexts
         SeatClass.HardSeat => text.Get("席别_硬座"),
         SeatClass.Standing => text.Get("席别_无座"),
         SeatClass.Other => text.Get("席别_其他"),
-        // 列 20 / 27 / 33 的中文名官方没给过，宁可写"未确认席别"也不猜，更不把枚举名丢给用户（DEC-16）。
+        SeatClass.PremiumFirstClass => text.Get("席别_优选一等座"),
+        // 列 27 / 33 的中文名官方没给过，宁可写"未确认席别"也不猜，更不把枚举名丢给用户（DEC-16）。
         _ => text.Get("席别_未确认"),
     };
 
@@ -38,9 +39,18 @@ public static class SeatTexts
     };
 
     /// <summary>有票的排前面、其次候补，让用户扫一眼就看到能买的那个。</summary>
-    public static string Summary(IEnumerable<SeatAvailability> seats, ITextProvider text, int take = 3)
-    {
-        var joined = string.Join(" · ", seats
+    public static string Summary(IEnumerable<SeatAvailability> seats, ITextProvider text) =>
+        string.Join(" · ", Lines(seats, text));
+
+    /// <summary>
+    /// 官方在这一行给出的<b>全部</b>席别，每条形如"商务座 12 · ¥2337"（FR-49）。
+    /// <para>之前这里是"取前 3 个有代表性的席别"，而丢掉的恰恰是用户要看的：
+    /// 官方给了 5 个席别与 5 个票价，界面只摆 3 个还不带价，读起来就像"这个工具的数据不如官网全"。
+    /// 这些数字全部来自同一次响应，<b>多显示不需要多请求</b>。</para>
+    /// <para>票价缺失时写"官方未给出"而不是留空——空一格会被读成"免费"或"没有这个席别"。</para>
+    /// </summary>
+    public static IReadOnlyList<string> Lines(IEnumerable<SeatAvailability> seats, ITextProvider text) =>
+        seats
             .OrderBy(s => s.State switch
             {
                 SeatState.Available => 0,
@@ -49,9 +59,7 @@ public static class SeatTexts
                 _ => 3,
             })
             .ThenBy(s => s.Class)
-            .Take(take)
-            .Select(s => $"{Seat(s.Class, text)} {State(s.State, text)}"));
-
-        return joined.Length == 0 ? text.Get("提示_官方未给出") : joined;
-    }
+            .Select(s => $"{Seat(s.Class, text)} {State(s.State, text)} · " +
+                         (s.Price is { } p ? $"¥{p:0.##}" : text.Get("提示_无官方数据")))
+            .ToList();
 }

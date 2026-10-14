@@ -693,6 +693,30 @@
          表头那一行画在 ScrollViewer 外面（见主窗口的列表模板），所以这里的单元格是普通控件：
          不可排序的列用 表头文字，可排序的列用 表头按钮——两者字号字重一致，
          否则用户会以为能点的那几列是另一种东西。 -->
+    <!-- ══ 反馈条（FR-46）══
+         四级共用这一个形态：同样的边框、内边距、圆角与字号，级别只换底色与文字色。
+         级别由 Tag 带进来（warn / error，其余按提示处理），而 Tag 的值来自视图模型对文案键的判断——
+         样式不猜句子，视图模型不画颜色。 -->
+    <Style x:Key="反馈条" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource 渐变_徽标底}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource 笔刷_边框}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="TextBlock.Foreground" Value="{DynamicResource 笔刷_文字}"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="warn">
+                <Setter Property="Background" Value="{DynamicResource 渐变_提醒底}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource 笔刷_控件边界}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="error">
+                <Setter Property="Background" Value="{DynamicResource 渐变_错误底}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource 笔刷_控件边界}"/>
+                <Setter Property="TextBlock.Foreground" Value="{DynamicResource 笔刷_底上文字}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="表头文字" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource 笔刷_次级文字}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
