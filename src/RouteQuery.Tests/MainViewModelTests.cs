@@ -22,7 +22,7 @@ public class MainViewModelTests
     private static readonly Station Shanghai = new("上海虹桥", "AOH", "shanghaihongqiao", "shq", "0201", "上海");
 
     /// <summary>一套替身 + 一个装配好的视图模型。默认不自动检查更新，免得后台任务干扰计数。</summary>
-    private sealed class Harness
+    internal sealed class Harness
     {
         public FakeSettings Settings { get; }
         public FakeQuery Query { get; } = new();
@@ -205,7 +205,7 @@ public class MainViewModelTests
         }
     }
 
-    private static TrainJourney Journey(string code, decimal? price = 553.00m, SeatState state = SeatState.Available) => new(
+    internal static TrainJourney Journey(string code, decimal? price = 553.00m, SeatState state = SeatState.Available) => new(
         code, $"240000{code}0L", Beijing, Shanghai, Beijing, Shanghai,
         new TimeSpan(7, 0, 0), new TimeSpan(11, 24, 0), new TimeSpan(4, 24, 0),
         false, PurchaseState.Buyable,
@@ -536,7 +536,7 @@ public class MainViewModelTests
     /// 一个"两段坐不同车、且分两天开"的中转方案。日期故意不同：FR-15 的全部风险就在
     /// "展开第二段时用的是哪一天"，两段同日的样本根本测不出拿错日期这件事。
     /// </summary>
-    private static TransferPlan TwoTrainPlan() => new(
+    internal static TransferPlan TwoTrainPlan() => new(
         new TransferLeg("G25", "240000G250L", Beijing, Nanjing, new TimeOnly(17, 0), new TimeOnly(20, 14),
             TimeSpan.FromMinutes(194), 0, [], LegDate),
         new TransferLeg("G7402", "57000G74020", Nanjing, Shanghai, new TimeOnly(8, 30), new TimeOnly(9, 32),

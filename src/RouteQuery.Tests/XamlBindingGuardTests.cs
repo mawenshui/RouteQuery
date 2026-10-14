@@ -23,8 +23,9 @@ public class XamlBindingGuardTests
         var missing = new SortedSet<string>();
 
         foreach (var (file, text) in Tagged(AppDir, "*.xaml"))
-            foreach (var path in Names(text, BindPattern))
+            foreach (var (path, exempt) in Bindings(text))
             {
+                if (exempt) continue;               // 见 TemplatedBindingPattern 的说明
                 // 只查根名：Selected.Train 的根是 MainViewModel.Selected，Train 由它自己那一层解析。
                 var root = path.Split('.')[0];
                 if (!known.Contains(root)) missing.Add($"{file}:{root}");
@@ -57,6 +58,17 @@ public class XamlBindingGuardTests
     /// <summary>MatchCollection 的 foreach 走的是旧的非泛型枚举器，拿到的元素是 object，所以统一用 Select 取第一个捕获组。</summary>
     private static IEnumerable<string> Names(string text, string pattern) =>
         Regex.Matches(text, pattern).Select(m => m.Groups[1].Value);
+
+    /// <summary>逐个绑定表达式地给出（根名, 是否绑到模板父级/祖先）。范围取到该绑定的收尾大括号为止。</summary>
+    private static IEnumerable<(string Path, bool TemplatedParentBound)> Bindings(string text)
+    {
+        foreach (Match m in Regex.Matches(text, BindPattern))
+        {
+            var end = text.IndexOf('}', m.Index);
+            var scope = end < 0 ? text[m.Index..] : text[m.Index..end];
+            yield return (m.Groups[1].Value, Regex.IsMatch(scope, TemplatedSourceFlag));
+        }
+    }
 
     [Fact]
     public void 学生票与儿童票只许出现在那句口径说明里()
@@ -100,6 +112,14 @@ public class XamlBindingGuardTests
     /// <summary>取 <c>{Binding X}</c> / <c>{Binding X.Y}</c> 的路径；只有修饰符没有路径的那种（<c>{Binding Mode=OneWay}</c>）跳过。</summary>
     private const string BindPattern =
         @"\{Binding\s+(?!(?:Mode|Path|RelativeSource|ElementName|UpdateSourceTrigger|FallbackValue|TargetNullValue|StringFormat)\s*=)([\w.]+)";
+
+    /// <summary>
+    /// 模板里 <c>RelativeSource=TemplatedParent / AncestorType</c> 的绑定指向的是<b>控件自身的依赖属性</b>
+    /// （如 ComboBox.IsDropDownOpen、Expander.IsExpanded），不是视图模型属性——"根名必须在代码里存在"
+    /// 这个前提对它不适用。豁免只针对这一类，且按**单个绑定表达式**判定，不按文件、不按行号：
+    /// 放宽到整本字典就等于把 DataContext 绑定也一起免检了。
+    /// </summary>
+    private const string TemplatedSourceFlag = @"RelativeSource\s*=\s*\{RelativeSource\s+(?:TemplatedParent|AncestorType)";
 
     private const string DynamicPattern = @"DynamicResource\s+([\w\u4e00-\u9fff]+)";
     private const string GetPattern = @"\bGet\(""([\w\u4e00-\u9fff]+)""\)";

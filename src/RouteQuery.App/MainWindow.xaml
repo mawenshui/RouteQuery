@@ -7,7 +7,7 @@
         Width="1280" Height="800" MinWidth="1080" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13"
-        Background="{DynamicResource 笔刷_窗口底}" TextBlock.Foreground="{DynamicResource 笔刷_文字}"
+        Background="{DynamicResource 渐变_窗口底}" TextBlock.Foreground="{DynamicResource 笔刷_文字}"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         mc:Ignorable="d"
@@ -245,7 +245,7 @@
 
                                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                                         <TextBlock Text="{Binding TrainCode}" FontWeight="Bold" FontSize="14"/>
-                                        <Border Background="{DynamicResource 笔刷_徽标底}" CornerRadius="3" Padding="4,0" Margin="6,0,0,0">
+                                        <Border Background="{DynamicResource 渐变_徽标底}" CornerRadius="3" Padding="4,0" Margin="6,0,0,0">
                                             <TextBlock Text="{Binding KindLabel}" FontSize="11"/>
                                         </Border>
                                     </StackPanel>

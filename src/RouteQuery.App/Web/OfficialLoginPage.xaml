@@ -5,13 +5,13 @@
         Title="{DynamicResource 登录_标题}"
         Width="920" Height="740" MinWidth="560" MinHeight="420"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource 笔刷_窗口底}" TextBlock.Foreground="{DynamicResource 笔刷_文字}"
+        Background="{DynamicResource 渐变_窗口底}" TextBlock.Foreground="{DynamicResource 笔刷_文字}"
         FontFamily="Microsoft YaHei UI, PingFang SC, Segoe UI" FontSize="13">
 
     <DockPanel>
         <!-- 顶部常驻说明：这一屏的唯一用途是让用户本人在官方页面里登录。
              这句话必须一直在，而不是只在第一次弹出来——用户中途切回来时会忘了自己在哪。 -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource 笔刷_提醒底}" Padding="12,10">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource 渐变_提醒底}" Padding="12,10">
             <StackPanel>
                 <TextBlock Text="{DynamicResource 登录_提示}" TextWrapping="Wrap" />
                 <Grid Margin="0,8,0,0">
@@ -35,7 +35,7 @@
         </Border>
 
         <!-- 非官方域名被拦下时的红条。刻意不"悄悄回到上一页"：用户必须知道自己刚才那次跳转没走成。 -->
-        <Border x:Name="BlockedBar" DockPanel.Dock="Top" Background="{DynamicResource 笔刷_错误底}" Padding="12,8" Visibility="Collapsed">
+        <Border x:Name="BlockedBar" DockPanel.Dock="Top" Background="{DynamicResource 渐变_错误底}" Padding="12,8" Visibility="Collapsed">
             <TextBlock x:Name="BlockedText" Foreground="{DynamicResource 笔刷_底上文字}" TextWrapping="Wrap"/>
         </Border>
 

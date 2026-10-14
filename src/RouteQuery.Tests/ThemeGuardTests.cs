@@ -15,7 +15,9 @@ public class ThemeGuardTests
     private static readonly string Dark = Path.Combine(AppDir, "Resources", "深色.xaml");
 
     private static readonly Regex Key = new(@"x:Key=""([\w\u4e00-\u9fff]+)""");
-    private static readonly Regex BrushUse = new(@"笔刷_[\w\u4e00-\u9fff]+");
+    // 渐变键一起查：皮肤改的是底色，缺一个 渐变_ 键和缺一个 笔刷_ 键是同一类故障——
+    // 那块底会静默落回系统默认色，运行时不报错（2026-10-12 深色档已经栽过一次）。
+    private static readonly Regex BrushUse = new(@"(?:笔刷|渐变)_[\w一-鿿]+");
 
     [Fact]
     public void 界面文件里不许出现任何色值()
@@ -71,6 +73,231 @@ public class ThemeGuardTests
 
     private static HashSet<string> KeysOf(string file) =>
         Key.Matches(File.ReadAllText(file)).Select(m => m.Groups[1].Value).ToHashSet(StringComparer.Ordinal);
+
+    // ── 渐变皮肤（FR-38 / 设计 UI-001 v1.2 §六·五）─────────────────────
+    //
+    // 这一组判据是**先写出来、看着它红**再开始调颜色的。原因很直白：
+    // "合适的对比度"如果只写在需求里，最后会变成"我看着顺眼"；
+    // 而渐变最典型的翻车方式是"拿渐变中间那条颜色去算对比度"——两端早就跌破了。
+    // 所以下面每一条都**对两端分别算**，任何一端不够就是不合格。
+
+    private static readonly Regex Gradient = new(
+        @"<LinearGradientBrush\s+x:Key=""([\w\u4e00-\u9fff]+)""([^>]*)>(.*?)</LinearGradientBrush>",
+        RegexOptions.Singleline);
+
+    private static readonly Regex Stop = new(@"Color=""(#[0-9A-Fa-f]{6,8})""");
+
+    private static readonly Regex Point = new(@"(StartPoint|EndPoint)=""([\d.]+),([\d.]+)""");
+
+    /// <summary>哪些底是"正文会落在上面"的——这些必须让正文与次级文字都过 AA。</summary>
+    private static readonly (string Surface, string[] Texts)[] BodySurfaces =
+    [
+        ("渐变_窗口底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_内容底", ["笔刷_文字", "笔刷_次级文字", "笔刷_有票", "笔刷_成功", "笔刷_错误"]),
+        ("渐变_行底", ["笔刷_文字", "笔刷_次级文字", "笔刷_有票", "笔刷_成功", "笔刷_错误"]),
+        ("渐变_徽标底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_输入底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_弹层底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_页签底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_页签选中底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_提醒底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_按钮底", ["笔刷_文字", "笔刷_次级文字"]),
+        ("渐变_按钮按下底", ["笔刷_文字"]),
+        ("渐变_错误底", ["笔刷_底上文字"]),
+    ];
+
+    [Fact]
+    public void 两档色板都必须有渐变画刷且每个至少两个色标()
+    {
+        foreach (var file in new[] { Light, Dark })
+        {
+            var name = Path.GetFileName(file);
+            var gradients = Gradient.Matches(File.ReadAllText(file)).ToList();
+
+            Assert.True(gradients.Count >= BodySurfaces.Length,
+                $"{name} 只有 {gradients.Count} 个渐变画刷，皮肤要求覆盖的底色有 {BodySurfaces.Length} 种");
+
+            Assert.All(gradients, g => Assert.True(Stop.Matches(g.Groups[3].Value).Count >= 2,
+                $"{name} 的 {g.Groups[1].Value} 不足两个色标——那不是一个渐变，是一整块同色"));
+        }
+    }
+
+    [Fact]
+    public void 每个渐变必须是纵向同向()
+    {
+        // 设计 §六·五：同屏内所有渐变同向（纵向）。方向不一致时，一屏里会出现好几块"各自打光"的面板，
+        // 那就是视觉噪声；斜向渐变在 125%/150% 这种分数缩放下还容易出带状断层。
+        var bad = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in new[] { Light, Dark })
+        {
+            var found = Gradient.Matches(File.ReadAllText(file)).ToList();
+            if (found.Count == 0)
+            {
+                // 一本没有渐变的色板让这条守卫"零违例通过"，那是假绿——必须点名。
+                bad.Add($"{Path.GetFileName(file)} 里一个渐变画刷都没有，方向没法判");
+                continue;
+            }
+
+            foreach (Match g in found)
+            {
+                var head = g.Groups[2].Value;
+                var points = Point.Matches(head).ToDictionary(m => m.Groups[1].Value,
+                    m => (X: double.Parse(m.Groups[2].Value), Y: double.Parse(m.Groups[3].Value)));
+                if (!points.TryGetValue("StartPoint", out var s) || !points.TryGetValue("EndPoint", out var e))
+                {
+                    bad.Add($"{Path.GetFileName(file)}:{g.Groups[1].Value} 没写 StartPoint/EndPoint");
+                    continue;
+                }
+                if (Math.Abs(s.X - e.X) > 0.001 || e.Y <= s.Y)
+                    bad.Add($"{Path.GetFileName(file)}:{g.Groups[1].Value} 不是自上而下（{s.X},{s.Y}→{e.X},{e.Y}）");
+            }
+        }
+
+        Assert.Empty(bad);
+    }
+
+    [Fact]
+    public void 正文色对每个渐变的上下两端都要过AA()
+    {
+        var fails = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in new[] { Light, Dark })
+        {
+            var name = Path.GetFileName(file);
+            var stops = GradientsByName(file);
+            var solids = SolidsByName(file);
+
+            foreach (var (surface, texts) in BodySurfaces)
+            {
+                if (!stops.TryGetValue(surface, out var ends))
+                {
+                    fails.Add($"{name} 缺底色键 {surface}");
+                    continue;
+                }
+
+                foreach (var text in texts)
+                {
+                    if (!solids.TryGetValue(text, out var fg))
+                    {
+                        fails.Add($"{name} 缺文字键 {text}");
+                        continue;
+                    }
+
+                    for (var i = 0; i < ends.Count; i++)
+                    {
+                        var ratio = Contrast(fg, ends[i]);
+                        if (ratio < 4.5)
+                            fails.Add($"{name}：{text} 落在 {surface} 的第 {i + 1} 端（{ends[i]}）只有 {ratio:0.00}:1，正文要求 ≥4.5:1");
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(fails);
+    }
+
+    [Fact]
+    public void 可交互控件的边界要看得见()
+    {
+        // 判的是 笔刷_控件边界（输入框、按钮、下拉框的轮廓），不是 笔刷_边框（表格分隔线）。
+        // 分隔线不承载信息，把它拉到 3:1 只会让满屏出现栅格线，反而更难看；
+        // 而控件边界低于 3:1 就不是"淡雅"，是"看不出这里能填字"。
+        var fails = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in new[] { Light, Dark })
+        {
+            var name = Path.GetFileName(file);
+            var stops = GradientsByName(file);
+            var solids = SolidsByName(file);
+            // 键不存在时不许"跳过就算通过"：那会让守卫在皮肤被回退之后变成一条空转的检查。
+            RequireKeys(file, stops, solids, fails);
+            if (!solids.TryGetValue("笔刷_控件边界", out var border) || !stops.TryGetValue("渐变_内容底", out var surface))
+                continue;
+
+            foreach (var end in surface)
+            {
+                var ratio = Contrast(border, end);
+                if (ratio < 3.0)
+                    fails.Add($"{name}：笔刷_控件边界 对 渐变_内容底（{end}）只有 {ratio:0.00}:1，可交互边界要求 ≥3:1");
+            }
+        }
+
+        Assert.Empty(fails);
+    }
+
+    [Fact]
+    public void 数据区的行底渐变幅度必须压住()
+    {
+        // 行底渐变两端相对亮度差 ≤ 0.04（设计 §六·五）。
+        // 幅度再大，一行里 40+ 个字段就会从"扫读"变成"逐字找"——这是本条唯一"宁可难看也要好读"的退让。
+        var fails = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in new[] { Light, Dark })
+        {
+            var stops = GradientsByName(file);
+            var solids = SolidsByName(file);
+            RequireKeys(file, stops, solids, fails);
+            if (!stops.TryGetValue("渐变_行底", out var ends)) continue;
+
+            var spread = ends.Select(Luminance).Max() - ends.Select(Luminance).Min();
+            if (spread > 0.04)
+                fails.Add($"{Path.GetFileName(file)}：渐变_行底 两端亮度差 {spread:0.000}，数据区上限是 0.04");
+        }
+
+        Assert.Empty(fails);
+    }
+
+    private static Dictionary<string, List<string>> GradientsByName(string file)
+    {
+        var map = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (Match g in Gradient.Matches(File.ReadAllText(file)))
+            map[g.Groups[1].Value] = Stop.Matches(g.Groups[3].Value).Select(m => m.Groups[1].Value).ToList();
+        return map;
+    }
+
+    private static Dictionary<string, string> SolidsByName(string file)
+    {
+        // 色板用的是**内容写法**：<SolidColorBrush x:Key="笔刷_文字">#1F1F1F</SolidColorBrush>。
+        // 只认 Color= 属性写法会一个都匹配不上，于是对比度守卫拿着空字典"全绿"——假绿比没有守卫更糟。
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (Match m in new Regex(
+                     @"<SolidColorBrush\s+x:Key=""([\w\u4e00-\u9fff]+)""\s*(?:Color=""(#[0-9A-Fa-f]{3,8})""|>(#[0-9A-Fa-f]{3,8})</SolidColorBrush>)").Matches(File.ReadAllText(file)))
+            map[m.Groups[1].Value] = m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value;
+        return map;
+    }
+
+    /// <summary>两档色板都得有这些键；缺键直接失败，不让守卫在回退之后变成空转。</summary>
+    private static void RequireKeys(string file, Dictionary<string, List<string>> gradients,
+        Dictionary<string, string> solids, SortedSet<string> fails)
+    {
+        var name = Path.GetFileName(file);
+        foreach (var (surface, texts) in BodySurfaces)
+            if (!gradients.ContainsKey(surface)) fails.Add($"{name}：缺底色键 {surface}");
+        foreach (var key in new[] { "笔刷_文字", "笔刷_次级文字", "笔刷_底上文字",
+                                    "笔刷_有票", "笔刷_成功", "笔刷_错误", "笔刷_控件边界" })
+            if (!solids.ContainsKey(key)) fails.Add($"{name}：缺文字键 {key}");
+    }
+
+    /// <summary>WCAG 2.1 相对亮度。sRGB 先拆线性，再按 0.2126/0.7152/0.0722 加权。</summary>
+    private static double Luminance(string hex)
+    {
+        var s = hex.StartsWith('#') ? hex[1..] : hex;
+        if (s.Length == 8) s = s[2..];                       // 带 AA 前缀的写法取后 6 位
+        double Channel(int i)
+        {
+            var v = Convert.ToInt32(s.Substring(i * 2, 2), 16) / 255.0;
+            return v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+        }
+
+        return 0.2126 * Channel(0) + 0.7152 * Channel(1) + 0.0722 * Channel(2);
+    }
+
+    private static double Contrast(string a, string b)
+    {
+        var (hi, lo) = Luminance(a) >= Luminance(b) ? (Luminance(a), Luminance(b)) : (Luminance(b), Luminance(a));
+        return (hi + 0.05) / (lo + 0.05);
+    }
 
     private static IEnumerable<string> MarkupFiles() =>
         Directory.EnumerateFiles(AppDir, "*.xaml", SearchOption.AllDirectories)
