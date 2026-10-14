@@ -730,19 +730,22 @@ public class MainViewModelTests
     public async Task 官方说没有和查不出是两种说法()
     {
         // NoResult / DataUnavailable / ParseFailure 不得合并（AGENTS 七.6）。
+        // "没有"这句话归结果区（FR-47），顶部只负责报"这一下成了没有"，两者各说各的。
         var none = new Harness();
         none.Query.Result = [];
         none.Ready();
         await none.Vm.QueryAsync(default);
         Assert.NotEqual(ViewState.Error, none.Vm.State);
-        Assert.Equal("状态_无结果", none.Vm.StatusText);
+        Assert.True(none.Vm.IsEmptyResult);
+        Assert.Equal("状态_无结果", none.Vm.EmptyResultText);
+        Assert.Equal("状态_完成", none.Vm.StatusText);
 
         var unavailable = new Harness();
         unavailable.Query.Throws = new QueryException(QueryErrorKind.DataUnavailable);
         unavailable.Ready();
         await unavailable.Vm.QueryAsync(default);
         Assert.Equal(ViewState.Error, unavailable.Vm.State);
-        Assert.NotEqual("状态_无结果", unavailable.Vm.StatusText);
+        Assert.NotEqual("状态_完成", unavailable.Vm.StatusText);
     }
 
     [Fact]
@@ -774,7 +777,9 @@ public class MainViewModelTests
         h.Vm.OnlyAvailable = true;
 
         Assert.Equal(ViewState.FilteredEmpty, h.Vm.State);
-        Assert.Equal("状态_筛选后空", h.Vm.StatusText);
+        // 顶部那条只报"成了没有"；"筛选后空"由结果区的空态自己说（State=FilteredEmpty 驱动那块覆盖层），
+        // 同一句话说两遍，用户读到的是回声而不是反馈。
+        Assert.Equal("状态_完成", h.Vm.StatusText);
     }
 
     [Fact]

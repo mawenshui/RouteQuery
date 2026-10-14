@@ -967,9 +967,9 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
             : Raw.Count == 0 ? ViewState.Results
             : ViewState.FilteredEmpty;
 
-        StatusText = State == ViewState.Results
-            ? string.Format(_text.Get("状态_结果数"), sorted.Count)
-            : _text.Get("状态_筛选后空");
+        // 趟数与空态都归结果区（FR-47/FR-48），顶部这条只报"刚才那一下成功了没有"——
+        // 它和错误话是同一条通道，成功也该在这里有个交代，但不能再把下面已经说过的话重说一遍。
+        StatusText = _text.Get("状态_完成");
     }
 
     // ── 查询 ─────────────────────────────────────────────────
@@ -1002,14 +1002,8 @@ public sealed class MainViewModel : Mvvm.ViewModelBase
             History.Insert(0, new HistoryRowViewModel(entry, _stations, _text));
             while (History.Count > IQueryHistory.MaxEntries) History.RemoveAt(History.Count - 1);
 
-            if (journeys.Count == 0)
-            {
-                State = ViewState.Results;
-                Rows.Clear();
-                StatusText = _text.Get("状态_无结果");
-                return;
-            }
-
+            // 官方给零趟不另开一条分支：它和"有十几趟"走同一条刷新路径，
+            // 由结果区的空态覆盖层说"这个日期没有直达车次"（FR-47），顶部只报"查询完成"。
             // 先落状态再刷视图：ApplyLocalView 对"还在加载"是直接跳过的，
             // 顺序反过来会让一次成功的查询永远停在转圈上（实测踩过）。
             State = ViewState.Results;

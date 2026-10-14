@@ -122,6 +122,8 @@ public class SkinRuntimeGuardTests
     [Theory]
     [InlineData(ThemeChoice.Light, "直达")]
     [InlineData(ThemeChoice.Dark, "直达")]
+    [InlineData(ThemeChoice.Light, "直达空态")]
+    [InlineData(ThemeChoice.Dark, "直达空态")]
     [InlineData(ThemeChoice.Light, "中转")]
     [InlineData(ThemeChoice.Dark, "中转")]
     [InlineData(ThemeChoice.Light, "报错")]
@@ -161,8 +163,8 @@ public class SkinRuntimeGuardTests
     }
 
     /// <summary>
-    /// 造一个带数据的界面。四个视图各挑一次：结果行、中转分段展开、错误横幅（FR-38 要求语义色不被稀释）、
-    /// 以及设置页——它是亲友第二常打开的窗口，里面的下拉框与开关走的是另一批模板。
+    /// 造一个带数据的界面。结果态/空态/中转分段展开/错误横幅（FR-38 要求语义色不被稀释）/设置页各挑一次：
+    /// 设置页是亲友第二常打开的窗口，里面的下拉框与开关走的是另一批模板。
     /// </summary>
     private static (Brush? 窗口底, FrameworkElement 内容, double 宽, double 高) 装好数据的界面(string view)
     {
@@ -177,6 +179,14 @@ public class SkinRuntimeGuardTests
                 h.Vm.QueryAsync(default).GetAwaiter().GetResult();
                 h.Vm.Selected = h.Vm.Rows[0];
                 h.Vm.LoadStopsAsync(default).GetAwaiter().GetResult();
+                window = new MainWindow { DataContext = h.Vm };
+                break;
+
+            case "直达空态":
+                // 官方给零趟时那句话必须落在直达区域正中（FR-47）。它是一张覆盖层，
+                // 断言只兜"有没有画出来"，落点对不对靠 %TEMP%\rq-skin-render 里那张图肉眼过。
+                h.Query.Result = [];
+                h.Vm.QueryAsync(default).GetAwaiter().GetResult();
                 window = new MainWindow { DataContext = h.Vm };
                 break;
 

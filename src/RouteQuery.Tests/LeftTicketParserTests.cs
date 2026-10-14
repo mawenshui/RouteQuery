@@ -105,10 +105,12 @@ public class LeftTicketParserTests
     {
         var g6701 = ParseCrossTypeSample().Single(j => j.TrainCode == "G6701");
 
-        // 官方 queryTicketPrice 对同一车次同一区间返回 174.0 / 79.0 / 49.0，实测逐项一致
+        // 官方 queryTicketPrice 对同一车次同一区间返回 174.0 / 79.0 / 49.0，实测逐项一致。
+        // 无座 49.0 来自尾巴 ≥3000 的那条 O 记录——官方自己也是这么认的（见 PriceDecoder）。
         Assert.Equal(174.00m, Seat(g6701, SeatClass.BusinessClass)!.Price);
         Assert.Equal(79.00m, Seat(g6701, SeatClass.FirstClass)!.Price);
         Assert.Equal(49.00m, Seat(g6701, SeatClass.SecondClass)!.Price);
+        Assert.Equal(49.00m, Seat(g6701, SeatClass.Standing)!.Price);
     }
 
     [Fact]
@@ -116,9 +118,66 @@ public class LeftTicketParserTests
     {
         var k599 = ParseCrossTypeSample().Single(j => j.TrainCode == "K599");
 
+        // 短码 3=硬卧、4=软卧（官方 seatTypeCodeForName 原文）。旧表把这两个记反了，
+        // 于是"硬卧 102.5 / 软卧 67.5"——一个比软卧还贵的硬卧，界面上一切看起来正常。
+        // 判据不是我们信自己：K599 记录尾部的余票数 2/21 与 rw_num=2、yw_num=有 逐条对得上。
         Assert.Equal(21.50m, Seat(k599, SeatClass.HardSeat)!.Price);
-        Assert.Equal(102.50m, Seat(k599, SeatClass.HardSleeper)!.Price);
-        Assert.Equal(67.50m, Seat(k599, SeatClass.SoftSleeper)!.Price);
+        Assert.Equal(67.50m, Seat(k599, SeatClass.HardSleeper)!.Price);
+        Assert.Equal(102.50m, Seat(k599, SeatClass.SoftSleeper)!.Price);
+        Assert.Equal(21.50m, Seat(k599, SeatClass.Standing)!.Price);
+    }
+
+    [Fact]
+    public void 每条票价记录尾部的余票数都落在它自己那一列上()
+    {
+        // 这是能把席别短码表整体问罪的守卫：一条记录说"某席别还剩 N 张"，
+        // 那 N 必须等于官方给那个席别那一列的取值（>20 显示"有"、0 显示"无"）。
+        // 记错短码时它对不上——2026-10-14 用旧表跑这条，22 条可比对里 11 条对不上。
+        var checkedCount = 0;
+        foreach (var record in RealRecords())
+        {
+            var cols = record.Split('|');
+            var fares = cols[LeftTicketColumnLayout.FareString.Index];
+            if (fares.Length % 10 != 0) continue;
+
+            for (var i = 0; i < fares.Length / 10; i++)
+            {
+                var (code, tail) = (fares.Substring(i * 10, 1), int.Parse(fares[(i * 10 + 6)..(i * 10 + 10)]));
+                var seatClass = tail >= 3000
+                    ? SeatClass.Standing
+                    : SeatCodeMap.SeatClassOf(code);
+                if (seatClass is null) continue;
+                var column = LeftTicketColumnLayout.AvailabilityColumns.First(c => c.Class == seatClass).Spec.Index;
+                var official = cols[column];
+
+                // 列里给的是给人看的话：数字、"有"（超过 20 张）、"无"（零张）。
+                var expected = tail >= 3000 ? tail - 3000 : tail;
+                var shown = expected switch
+                {
+                    0 => "无",
+                    > 20 => "有",
+                    _ => expected.ToString(),
+                };
+                Assert.True(official == shown,
+                    $"{cols[3]} 短码 {code} 尾部 {tail} → {seatClass} 那一列实际是 \"{official}\"，不是 \"{shown}\"");
+                checkedCount++;
+            }
+        }
+
+        Assert.True(checkedCount >= 20, $"只有 {checkedCount} 条记录可比对，样本不足以证明对齐——检查样本是否被换掉");
+    }
+
+    /// <summary>两份真实样本里的全部竖线记录。对齐判据要的样本量不是单份样本能给的。</summary>
+    private static IEnumerable<string> RealRecords()
+    {
+        var all = new List<string>();
+        foreach (var file in new[] { "leftTicket-跨车型样本.json", "leftTicket-运行图调整样本.json" })
+        {
+            using var doc = JsonDocument.Parse(Samples.Json(file));
+            all.AddRange(doc.RootElement.GetProperty("data").GetProperty("result")
+                .EnumerateArray().Select(e => e.GetString()!));
+        }
+        return all;
     }
 
     [Fact]
