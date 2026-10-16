@@ -80,4 +80,25 @@ public class StructureDriftTests
             """{"status":true,"httpstatus":200,"data":{"result":[],"map":{}}}""");
         Assert.Empty(journeys);
     }
+
+    [Fact]
+    public void data被官方给成一段文字时判数据缺失而不是抛到界面外()
+    {
+        // 2026-10-14 中转日志里那三条未处理异常就是这个形态（余票这一路是同一处隐患）。
+        // 判 DataUnavailable 而不是 ParseFailure：前者是"等一会儿或去官网看"，
+        // 后者是"这个版本查不了、去找新版"——把前者说成后者，用户会去要一个并不存在的新版本。
+        var ex = Assert.Throws<QueryException>(() => new LeftTicketParser(Samples.Stations.Value).Parse(
+            """{"status":true,"httpstatus":200,"data":"系统繁忙","messages":[]}"""));
+
+        Assert.Equal(QueryErrorKind.DataUnavailable, ex.Kind);
+    }
+
+    [Fact]
+    public void 最外层不是对象时报结构变更而不是抛到界面外()
+    {
+        // 合法 JSON 但不一定是对象：数组与裸字符串同样能走到取属性那一步。
+        var ex = Assert.Throws<QueryException>(() => new LeftTicketParser(Samples.Stations.Value).Parse("[3,2,1]"));
+
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+    }
 }

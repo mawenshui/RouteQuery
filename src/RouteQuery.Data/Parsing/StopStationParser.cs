@@ -32,9 +32,16 @@ public static class StopStationParser
             throw QueryException.ParseFailure("经停站响应不是合法 JSON：" + ex.Message);
         }
 
-        if (!root.TryGetProperty("data", out var data) ||
-            !data.TryGetProperty("data", out var arr) ||
-            arr.ValueKind != JsonValueKind.Array)
+        // 与中转、余票同一类隐患：TryGetProperty 只对对象合法，官方把 data 给成一段文字时
+        // 它会抛 InvalidOperationException 并绕过 QueryException 一路冒到界面（JsonShape 有全文）。
+        if (!JsonShape.IsObject(root))
+            throw QueryException.ParseFailure("经停站响应的最外层不是对象");
+        if (!JsonShape.Prop(root, "data", out var data))
+            throw QueryException.ParseFailure("经停站响应没有 data 这一项");
+        if (!JsonShape.IsObject(data))
+            throw QueryException.DataUnavailable("经停站响应的 data 不是数据对象，官方这一项没给");
+
+        if (!JsonShape.Prop(data, "data", out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
             throw QueryException.ParseFailure("经停站响应缺少 data.data 数组");
         }
@@ -44,6 +51,7 @@ public static class StopStationParser
         var ordinal = 0;
         foreach (var item in arr.EnumerateArray())
         {
+            if (!JsonShape.IsObject(item)) continue;   // 站条目不是对象就是官方换了形态或混进了占位，跳过而不是猜
             var name = Str(item, "station_name");
             var no = Str(item, "station_no");
             if (name is null || no is null) continue;   // 缺关键字段的站跳过，而不是编一个

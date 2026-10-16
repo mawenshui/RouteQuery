@@ -48,13 +48,24 @@ public sealed class LeftTicketParser(IStationRepository stations)
         {
             var root = doc.RootElement;
 
+            // TryGetProperty 只对对象合法。官方偶尔回一个合法 JSON 但不是对象，
+            // 那时必须判成"结构变了"，而不是让 InvalidOperationException 冒到界面上
+            // （2026-10-14 的中转日志就是这么崩的，见 JsonShape）。
+            if (!JsonShape.IsObject(root))
+                throw QueryException.ParseFailure("余票响应的最外层不是对象");
+
             // 官方的业务成功位与 HTTP 位分开。status=false 时 data 可能为空壳，不能当无结果。
             if (root.TryGetProperty("status", out var statusEl) && statusEl.ValueKind == JsonValueKind.False)
                 throw new QueryException(QueryErrorKind.UpstreamRejected, "官方返回 status=false");
 
-            if (!root.TryGetProperty("data", out var data) ||
-                !data.TryGetProperty("result", out var result) ||
-                result.ValueKind != JsonValueKind.Array)
+            if (!JsonShape.Prop(root, "data", out var data))
+                throw QueryException.ParseFailure("余票响应没有 data 这一项");
+            // data 给成一段文字（官方的"系统繁忙"一类答复）：这一项没给，可重试——
+            // 说成"格式变了、去找新版"会把用户支使去干一件没用的事（AGENTS 七.6）。
+            if (!JsonShape.IsObject(data))
+                throw QueryException.DataUnavailable("余票响应的 data 不是数据对象，官方这一项没给");
+
+            if (!JsonShape.Prop(data, "result", out var result) || result.ValueKind != JsonValueKind.Array)
             {
                 throw QueryException.ParseFailure("响应缺少 data.result 数组");
             }

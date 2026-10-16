@@ -170,6 +170,27 @@ public class TransferParserTests
     }
 
     [Fact]
+    public void data被官方给成一段文字时判数据缺失而不是崩()
+    {
+        // 2026-10-14 的日志里有三条未处理异常就是这个形态：合法 JSON、data 是字符串。
+        // 旧写法直接 data.TryGetProperty(...)，而它只对对象合法——抛出来的 InvalidOperationException
+        // 不是 QueryException，会一路冒到 WPF 分发器上，界面连一句降级话都拿不到。
+        var json = JsonNode.Parse(Samples.Json(Sample))!.AsObject();
+        json["data"] = "请登录";
+
+        var ex = Assert.Throws<QueryException>(() => Parse(json.ToJsonString()));
+        Assert.Equal(QueryErrorKind.DataUnavailable, ex.Kind);
+    }
+
+    [Fact]
+    public void 最外层不是对象时判形态变更而不是崩()
+    {
+        // 官方给一个 JSON 数组或裸字符串也是合法 JSON，走到取属性那一步同样会抛。
+        var ex = Assert.Throws<QueryException>(() => Parse("[1,2,3]"));
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+    }
+
+    [Fact]
     public void 单条方案缺字段时按形态异常处理()
     {
         var json = JsonNode.Parse(Samples.Json(Sample))!.AsObject();

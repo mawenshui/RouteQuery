@@ -35,10 +35,18 @@ public static class TransferParser
             throw QueryException.ParseFailure("中转响应不是合法 JSON");
         }
 
-        if (root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty("data", out var data)
-            || !data.TryGetProperty("middleList", out var list)
-            || list.ValueKind != JsonValueKind.Array)
+        if (!JsonShape.IsObject(root))
+            throw QueryException.ParseFailure("中转响应的最外层不是对象");
+        if (!JsonShape.Prop(root, "data", out var data))
+            throw QueryException.ParseFailure("中转响应没有 data 这一项");
+
+        // 实测（2026-10-14 日志，三次）：登录态不被认的那一刻，官方回的是合法 JSON，
+        // 但 data 是一段文字而不是对象。这一条判 DataUnavailable 而不是 ParseFailure——
+        // 后者等于叫用户去要一个新版本，而该做的是重新登录或等一会儿（AGENTS 七.6 三者不得合并）。
+        if (!JsonShape.IsObject(data))
+            throw QueryException.DataUnavailable("中转响应的 data 不是数据对象，官方这一项没给");
+
+        if (!JsonShape.Prop(data, "middleList", out var list) || list.ValueKind != JsonValueKind.Array)
         {
             throw QueryException.ParseFailure("中转响应缺少 data.middleList");
         }
