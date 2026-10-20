@@ -115,7 +115,10 @@ public sealed class ExtensionQueryService(
             }
         }
 
-        var notQueried = candidates.Count - taken.Count;
+        // "未查候选"必须是<b>真的没查</b>的那几个：中止或被停止时，预算内的候选也会有一多半没跑，
+        // 只算"超出预算的部分"会让界面在整批中止时写出"未查候选 0 个"——那正好把用户最该知道的
+        // 一件事说反了。正常跑完时 outcomes 数等于 taken 数，本式与旧式结果完全一样。
+        var notQueried = candidates.Count - outcomes.Count;
         gate.Note($"扩展批次结束：本动作实发 {gate.CurrentActionIssued} 次，结果 {outcomes.Count} 条，未查候选 {notQueried} 个，原因 {stopReason}");
 
         return new ExtensionBatch(outcomes, notQueried, stopReason, gate.CurrentActionIssued);

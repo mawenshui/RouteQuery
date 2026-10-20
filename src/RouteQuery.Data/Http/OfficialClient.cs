@@ -56,9 +56,25 @@ public sealed class OfficialClient : IDisposable
     /// 注意这里传的是<b>存储本身</b>而不是 Cookie 字符串——Cookie 只在发请求的一刻被读出来，
     /// 不进入任何长驻字段，也不出现在方法签名上（SPEC-007 三.2）。</param>
     public OfficialClient(ProtectedSessionStore? session = null)
+        : this(session, transport: null)
+    {
+    }
+
+    /// <summary>
+    /// <b>测试接缝</b>：把传输层换成一个可控的 handler，用来喂那些真机上按需复现不了的响应——
+    /// 官方回 HTML 错误页（风控）、302 到登录页（会话失效）。
+    /// 这两条正是验收项 TC-D5"遇风控整批中止"与 TC-E6"失效即清除本地会话"唯一能自动化的形态。
+    /// <para><b>刻意是 <c>internal</c>，不是 public</b>：生产代码里没有任何一条路径走这个构造
+    /// （公开的构造只传 <c>transport: null</c>），它也不出现在本程序集的公开类型成员上，
+    /// 只对本程序集与 <c>RouteQuery.Tests</c> 可见——可见性口子早就为同一目的开过一次
+    /// （见 <c>ProtectedSessionStore</c> 与 csproj 里的 <c>InternalsVisibleTo</c> 注释）。</para>
+    /// <para>留着而不还原，是因为"还原"等于把这两条测试一起删掉，
+    /// 而它们钉着的是两条合规承诺；接缝本身不改变任何运行时行为。</para>
+    /// </summary>
+    internal OfficialClient(ProtectedSessionStore? session, HttpMessageHandler? transport)
     {
         _session = session;
-        _http = new HttpClient(new HttpClientHandler
+        _http = new HttpClient(transport ?? new HttpClientHandler
         {
             CookieContainer = new CookieContainer(64),
             UseCookies = true,
