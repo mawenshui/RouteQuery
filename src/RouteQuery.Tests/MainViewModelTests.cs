@@ -427,6 +427,33 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task 换选另一趟时上一趟的两块面板内容一起清空()
+    {
+        // TC-D2：详情区只有一块，换选后上一趟的经停与"多买几站"一个字都不该留着——
+        // 留着会被读成"这趟车也停这些站、也能多买这几站"。
+        var h = new Harness();
+        h.Query.Result = [Journey("G1"), Journey("G3")];
+        h.Ready();
+        await h.Vm.QueryAsync(default);
+
+        h.Vm.Selected = h.Vm.Rows[0];
+        Assert.True(h.Vm.HasStops);
+        var target = h.Vm.Selected!.Model;
+        // 扩展结果是 Progress<T> 逐条插进来的，而 Progress<T> 投递到线程池、await 不等它，
+        // 所以这里手工放一条：测的是"换选时该不该清"，插入路径归 TC-D3。
+        h.Vm.Extensions.Add(new ExtensionRowViewModel(new ExtensionOutcome(new ExtensionCandidate(
+            1, 0,
+            new StopDetail("00", "廊坊", null, new TimeSpan(6, 30, 0), "—", true, false),
+            new StopDetail("01", "北京南", new TimeSpan(7, 0, 0), null, "—", false, false)), target), target, h.Text));
+        Assert.Single(h.Vm.Extensions);
+
+        h.Vm.Selected = h.Vm.Rows[1];
+
+        Assert.Empty(h.Vm.Extensions);                                  // 上一趟的多买几站没了
+        Assert.Equal("240000G30L", h.Stops.Last!.Value.TrainNo);        // 面板摆的是新选那趟的经停
+    }
+
+    [Fact]
     public async Task 详情区隐藏时选中不取数()
     {
         // 花掉一次官方额度却渲染不出任何东西，是纯浪费（FR-40 与 FR-43 的接口）。

@@ -254,9 +254,16 @@ public partial class MainWindow : Window
     /// <summary>循环滚动：到底了再往下就回到第一条——查热门线路时不用来回拖滚动条。</summary>
     private static void Move(ListBox list, int delta)
     {
-        var count = list.Items.Count;
-        var next = (list.SelectedIndex + delta + count) % count;
-        list.SelectedIndex = next;
+        list.SelectedIndex = NextIndex(list.SelectedIndex, list.Items.Count, delta);
         list.ScrollIntoView(list.SelectedItem);
     }
+
+    /// <summary>
+    /// 一次方向键之后高亮落在哪一条。弹层刚打开时没有任何预选（<c>current == -1</c>），
+    /// 所以<b>第 n 次按 ↓ 高亮第 n 条</b>，"↓ Enter"就是选第一条——这是界面说明第五节那条
+    /// 键盘主链路的由来，也是用例 TC-A4 的判据出处。单独拆出来是为了让这条差一能被断言，
+    /// 而不是靠真键盘去赌按键有没有送达。
+    /// </summary>
+    internal static int NextIndex(int current, int count, int delta) =>
+        (current + delta + count) % count;
 }
