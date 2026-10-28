@@ -1,3 +1,4 @@
+using RouteQuery.App.ViewModels;
 using RouteQuery.Core.Model;
 using RouteQuery.Data.Parsing;
 
@@ -94,6 +95,37 @@ public class AvailabilityTriStateTests
         Assert.False(journey.HasAnyTicket);
         Assert.Equal(49.00m, JourneyWith([
             new SeatAvailability(SeatClass.SecondClass, "有", SeatState.Available, 49.00m)]).LowestPrice);
+    }
+
+    // ── 显示层：官方写数字时不许抹成"有" ─────────────────────────
+    // 2026-10-20 与官方页面逐格比对抓到：G807 商务座那一格官方写 7（列 32 原文就是 "7"），界面写"有"。
+    // 需求 6.3 的展示规则是"数字原样显示"，抹平之后"只剩 5 张"和"多到不数"在界面上长得一模一样。
+
+    private static string Shown(string raw, bool waitlist = false) =>
+        SeatTexts.State(AvailabilityDecoder.Decode(raw, PurchaseState.Buyable, SeatClass.BusinessClass, waitlist),
+            raw, new MainViewModelTests.Harness.CopyText());
+
+    [Theory]
+    [InlineData("7")]
+    [InlineData("1")]
+    [InlineData("20")]
+    public void 官方写数字时界面原样写数字(string raw) => Assert.Equal(raw, Shown(raw));
+
+    [Fact]
+    public void 官方没给数字时界面不自己造一个()
+    {
+        Assert.Equal("余票_有", Shown("有"));
+        Assert.Equal("余票_无", Shown("无"));
+        Assert.Equal("余票_候补", Shown("无", waitlist: true));
+        Assert.Equal("提示_官方未给出", Shown("*"));
+    }
+
+    [Fact]
+    public void 一行席别文案里带的是具体余票数与票价()
+    {
+        var journey = JourneyWith(new SeatAvailability(SeatClass.BusinessClass, "7", SeatState.Available, 1870m));
+        var line = SeatTexts.Lines(journey.Seats, new MainViewModelTests.Harness.CopyText()).Single();
+        Assert.Equal("席别_商务座 7 · ¥1870", line);
     }
 
     private static TrainJourney JourneyWith(params SeatAvailability[] seats)

@@ -28,13 +28,20 @@ public static class SeatTexts
         _ => text.Get("席别_未确认"),
     };
 
-    public static string State(SeatState state, ITextProvider text) => state switch
+    /// <summary>
+    /// 余票状态的中文说法。<b>官方给的是具体数字时，原样把数字摆出来</b>——需求 6.3 的展示规则写得很死：
+    /// "数字（<c>3</c>）原样显示；<c>有</c>/<c>无</c> 原样显示"。官方把 20 张以上折成"有"、剩下的写成具体数，
+    /// 这个区别本身就是信息：一律写成"有"，"只剩 5 张"和"多到不数"在界面上就长得一模一样，
+    /// 而用户要按这个决定要不要现在买。
+    /// <para>2026-10-20 与官方页面逐格比对时抓到的就是这一条：官方 G807 商务座那一格写 <c>7</c>，
+    /// 界面写"有"——列 32 里明明是 <c>7</c>，是显示层把它抹平的。</para>
+    /// </summary>
+    public static string State(SeatState state, string raw, ITextProvider text) => state switch
     {
-        SeatState.Available => text.Get("余票_有"),
+        SeatState.Available => int.TryParse(raw, out var count) && count > 0 ? raw : text.Get("余票_有"),
         SeatState.SoldOut => text.Get("余票_无"),
         SeatState.Waitlist => text.Get("余票_候补"),
         SeatState.NotYetOnSale => text.Get("余票_未开售"),
-        SeatState.Unknown => text.Get("提示_官方未给出"),
         _ => text.Get("提示_官方未给出"),
     };
 
@@ -59,7 +66,7 @@ public static class SeatTexts
                 _ => 3,
             })
             .ThenBy(s => s.Class)
-            .Select(s => $"{Seat(s.Class, text)} {State(s.State, text)} · " +
+            .Select(s => $"{Seat(s.Class, text)} {State(s.State, s.Raw, text)} · " +
                          (s.Price is { } p ? $"¥{p:0.##}" : text.Get("提示_无官方数据")))
             .ToList();
 }
