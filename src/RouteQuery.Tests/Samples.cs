@@ -51,12 +51,24 @@ internal static class Samples
     }
 
     /// <summary>
+    /// 当前布局（v4，59 列）的跨车型真实样本。
+    /// <para>旧的 58 列那份不删，但角色变了：它现在是<b>"列数漂移"的反例</b>——
+    /// 用它必须解析失败，正是 <c>StructureDriftTests</c> 要的东西。
+    /// 官方在 2026-10-20 与 10-28 之间把记录从 58 列改成 59 列（新列插在下标 57），
+    /// 两份样本的逐位对照写在 v4 样本的 <c>_元信息</c> 里。</para>
+    /// </summary>
+    internal const string CrossKind = "leftTicket-跨车型样本-v4-59列-20261028.json";
+
+    /// <summary>上一版布局（v3，58 列）的样本。只用于"列数不符必须不出数"这一类断言。</summary>
+    internal const string CrossKindV3 = "leftTicket-跨车型样本.json";
+
+    /// <summary>
     /// 从跨车型真实样本里取指定车次的那条原始竖线记录。
     /// 漂移守卫要在真记录上做定向破坏，因此这里返回未切分的原文。
     /// </summary>
     internal static string RecordOf(string trainCode)
     {
-        using var doc = JsonDocument.Parse(Json("leftTicket-跨车型样本.json"));
+        using var doc = JsonDocument.Parse(Json(CrossKind));
         foreach (var e in doc.RootElement.GetProperty("data").GetProperty("result").EnumerateArray())
         {
             var text = e.GetString();
@@ -65,7 +77,7 @@ internal static class Samples
             if (cols.Length > 3 && cols[3] == trainCode) return text;
         }
         throw new InvalidOperationException(
-            $"真实样本里没有车次 {trainCode}。样本是 2026-10-09 采集的，车次会随日期变化——需要重新采集样本，而不是改测试。");
+            $"真实样本里没有车次 {trainCode}。样本是 2026-10-28 采集的，车次会随日期变化——需要重新采集样本，而不是改测试。");
     }
 
     private static string FindSampleDir(string start)

@@ -19,8 +19,26 @@ public class StructureDriftTests
     [Fact]
     public void 列数减少时整批判为解析失败()
     {
-        var broken = string.Join('|', RealRecord().Split('|').SkipLast(1));   // 58 → 57
+        var broken = string.Join('|', RealRecord().Split('|').SkipLast(1));   // 59 → 58
         var ex = Assert.Throws<QueryException>(() => new LeftTicketParser(Samples.Stations.Value).Parse(BodyWith(broken)));
+
+        Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
+        Assert.Contains("列数不符", ex.Detail);
+    }
+
+    [Fact]
+    public void 上一版布局的真实样本现在必须判结构变更()
+    {
+        // 官方于 2026-10-28 把记录从 58 列改成 59 列（新列插在下标 57）。旧样本不删，
+        // 它的角色变成"一个真实存在过的漂移反例"：拿它必须不出数并说"列数不符"，
+        // 而不是按新表悄悄错位解析。这条比上面那条合成断言更值钱——
+        // 因为 58 列不是我们编出来的坏输入，而是官方真的给过的那种形状。
+        using var doc = JsonDocument.Parse(Samples.Json(Samples.CrossKindV3));
+        var old = doc.RootElement.GetProperty("data").GetProperty("result")[0].GetString()!;
+        Assert.Equal(58, old.Split('|').Length);
+
+        var ex = Assert.Throws<QueryException>(
+            () => new LeftTicketParser(Samples.Stations.Value).Parse(BodyWith(old)));
 
         Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
         Assert.Contains("列数不符", ex.Detail);

@@ -7,7 +7,7 @@ namespace RouteQuery.Tests;
 
 /// <summary>
 /// <see cref="LeftTicketParser"/> 的契约测试：用官方真实响应逐字段断言，而不是只断言"没抛异常"
-/// （SPEC-005 二.4）。样本为 2026-10-09 实测的北京→保定，覆盖 K/T/Z/G 四种车型。
+/// （SPEC-005 二.4）。样本为 2026-10-28 实测的北京→保定，覆盖 C/D/G/K/T/Z 六种车型、v4 布局（59 列）。
 /// </summary>
 public class LeftTicketParserTests
 {
@@ -15,7 +15,7 @@ public class LeftTicketParserTests
 
     private static IReadOnlyList<TrainJourney> ParseCrossTypeSample()
     {
-        using var doc = JsonDocument.Parse(Samples.Json("leftTicket-跨车型样本.json"));
+        using var doc = JsonDocument.Parse(Samples.Json(Samples.CrossKind));
         var data = doc.RootElement.GetProperty("data");
 
         var records = data.GetProperty("result").EnumerateArray()
@@ -29,6 +29,25 @@ public class LeftTicketParserTests
         return NewParser().Parse(Samples.Response(records, names));
     }
 
+    /// <summary>
+    /// 造一条官方"运行图调整、暂停发售"的占位记录。
+    /// <para>为什么不直接用 2026-10-12 那份真实占位样本：它是 v3 布局（58 列），官方 2026-10-28 改成 59 列之后
+    /// 它已经过不了列数自检——那正是我们要的行为，见 <c>StructureDriftTests</c>。占位记录没法按需再撞一次，
+    /// 所以这里在一条<b>真实的 v4 记录</b>上按官方那套哨兵值改五个字段：车次号、时刻、历时、可购状态、列 1 那句话。
+    /// 被测的是"成套哨兵值要被摘出去"，而它读的列全在下标 11 以内，与尾部列数无关。</para>
+    /// </summary>
+    private static string SuspendedRecord(string code)
+    {
+        var c = Samples.RecordOf("G6701").Split('|');
+        c[1] = "列车运行图调整,暂停发售";
+        c[3] = code;
+        c[8] = "24:00";
+        c[9] = "24:00";
+        c[10] = "99:59";
+        c[11] = "IS_TIME_NOT_BUY";
+        return string.Join('|', c);
+    }
+
     [Fact]
     public void 官方运行图调整占位记录不再把整批判死()
     {
@@ -36,10 +55,11 @@ public class LeftTicketParserTests
         // 时刻 24:00/24:00、历时 99:59、canWebBuy=IS_TIME_NOT_BUY、列 1 写着"列车运行图调整,暂停发售"）。
         // 它当时让整趟查询报"官方数据格式变了"，用户看到的是一个查不了的版本——而官方给了 53 趟真数据。
         var parser = NewParser();
-        var journeys = parser.Parse(Samples.Json("leftTicket-运行图调整样本.json"));
+        var real = RecordsOf(Samples.CrossKind);
+        var journeys = parser.Parse(Samples.Response(real.Append(SuspendedRecord("G547")).ToList()));
 
-        Assert.Equal(["1461", "G1", "G7"], journeys.Select(j => j.TrainCode).OrderBy(c => c).ToArray());
-        Assert.DoesNotContain("G547", journeys.Select(j => j.TrainCode));
+        Assert.Equal(real.Count, journeys.Count);                     // 真数据一条没丢
+        Assert.DoesNotContain("G547", journeys.Select(j => j.TrainCode));   // 占位那条不进列表
         Assert.Equal(["列车运行图调整,暂停发售"], parser.LastSuspendedMessages);
     }
 
@@ -48,16 +68,30 @@ public class LeftTicketParserTests
     {
         // 摘出去的条件是"哨兵值成套出现"。把历时改成正常值、时刻仍留 24:00，
         // 它就不该被当占位记录放过——自检必须响，否则这条规则会变成"以后什么怪时刻都放行"的口子。
-        var tampered = RecordsOf("leftTicket-运行图调整样本.json");
-        var placeholder = tampered.Single(r => r.Split('|')[3] == "G547");
-        var columns = placeholder.Split('|');
+        var columns = SuspendedRecord("G547").Split('|');
         columns[10] = "06:00";
-        tampered[tampered.IndexOf(placeholder)] = string.Join('|', columns);
 
-        var ex = Assert.Throws<QueryException>(() => NewParser().Parse(Samples.Response(tampered)));
+        var ex = Assert.Throws<QueryException>(
+            () => NewParser().Parse(Samples.Response(new[] { string.Join('|', columns) })));
 
         Assert.Equal(QueryErrorKind.ParseFailure, ex.Kind);
         Assert.Contains("列 8", ex.Message);
+    }
+
+    [Fact]
+    public void 漂移当天那份真实响应现在能解析出车次()
+    {
+        // 2026-10-28 17:23，北京南→上海虹桥这份真实响应让整趟查询报了
+        // "列数不符：期望 58，实际 59"——用户看到的是"这个版本查不了"。
+        // 这条断言只干一件事：证明"把列数改准"真的让应用恢复出数，而不是只让测试变绿。
+        // 32 条记录里没有官方占位记录，所以解析条数必须等于原始条数，少一条就是哪里又丢了。
+        var parser = NewParser();
+        var journeys = parser.Parse(Samples.Json("leftTicket-v4布局-北京南上海虹桥-20261029.json"));
+
+        Assert.Equal(32, journeys.Count);
+        Assert.Empty(parser.LastSuspendedMessages);
+        Assert.Contains("G25", journeys.Select(j => j.TrainCode));
+        Assert.All(journeys, j => Assert.Matches(@"^\d{2}:\d{2}$", j.Departure.ToString(@"hh\:mm")));
     }
 
     private static List<string> RecordsOf(string sample)
@@ -105,12 +139,15 @@ public class LeftTicketParserTests
     {
         var g6701 = ParseCrossTypeSample().Single(j => j.TrainCode == "G6701");
 
-        // 官方 queryTicketPrice 对同一车次同一区间返回 174.0 / 79.0 / 49.0，实测逐项一致。
-        // 无座 49.0 来自尾巴 ≥3000 的那条 O 记录——官方自己也是这么认的（见 PriceDecoder）。
-        Assert.Equal(174.00m, Seat(g6701, SeatClass.BusinessClass)!.Price);
-        Assert.Equal(79.00m, Seat(g6701, SeatClass.FirstClass)!.Price);
-        Assert.Equal(49.00m, Seat(g6701, SeatClass.SecondClass)!.Price);
-        Assert.Equal(49.00m, Seat(g6701, SeatClass.Standing)!.Price);
+        // 这四个数在采集那一刻与官方页面的 aria-label 逐项对过：
+        // "G6701次列车，商务座票价228元，余票3 / 一等座104元候补 / 二等座65元有 / 无座65元无"。
+        // 无座 65.0 来自尾巴 ≥3000 的那条 O 记录——官方自己也是这么认的（见 PriceDecoder）。
+        Assert.Equal(228.00m, Seat(g6701, SeatClass.BusinessClass)!.Price);
+        Assert.Equal(104.00m, Seat(g6701, SeatClass.FirstClass)!.Price);
+        Assert.Equal(65.00m, Seat(g6701, SeatClass.SecondClass)!.Price);
+        Assert.Equal(65.00m, Seat(g6701, SeatClass.Standing)!.Price);
+        // 刻意不断言 C125：它是浮动票价，同一区间在几分钟内被官方给过 56/90 与 59/94 两套数。
+        // 把任何一套写死成"与官方一致"都是假话——这条边界写在样本的 _元信息 里。
     }
 
     [Fact]
@@ -171,7 +208,9 @@ public class LeftTicketParserTests
     private static IEnumerable<string> RealRecords()
     {
         var all = new List<string>();
-        foreach (var file in new[] { "leftTicket-跨车型样本.json", "leftTicket-运行图调整样本.json" })
+        // v4（59 列）与 v3（58 列）两份都跑：这条不变量只看下标 20-33 与 39 的关系，
+        // 而 v4 的变化全在下标 57 之后，所以两版都该成立——只测新版就漏了"老样本没被新表错解"这一层。
+        foreach (var file in new[] { Samples.CrossKind, "leftTicket-运行图调整样本.json" })
         {
             using var doc = JsonDocument.Parse(Samples.Json(file));
             all.AddRange(doc.RootElement.GetProperty("data").GetProperty("result")
@@ -187,8 +226,8 @@ public class LeftTicketParserTests
 
         Assert.NotNull(g6701.OnSaleAt);
         Assert.Equal(2026, g6701.OnSaleAt!.Value.Year);
-        Assert.Equal(9, g6701.OnSaleAt.Value.Month);
-        Assert.Equal(28, g6701.OnSaleAt.Value.Day);
+        Assert.Equal(10, g6701.OnSaleAt.Value.Month);
+        Assert.Equal(17, g6701.OnSaleAt.Value.Day);
         Assert.Equal(8, g6701.OnSaleAt.Value.Hour);
     }
 

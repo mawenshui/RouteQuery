@@ -56,8 +56,8 @@ public class ColumnProvenanceTests
     {
         // 这两个值是排查"某天开始查不出东西"时的第一对照点，因此要被测试钉住：
         // 有人顺手改了它们时必须有人来解释为什么。
-        Assert.Equal(58, LeftTicketColumnLayout.ExpectedColumnCount);
-        Assert.True(LeftTicketColumnLayout.LayoutVersion >= 3);
+        Assert.Equal(59, LeftTicketColumnLayout.ExpectedColumnCount);
+        Assert.Equal(4, LeftTicketColumnLayout.LayoutVersion);
     }
 
     private static string RealRecord() => Samples.RecordOf("G6701");

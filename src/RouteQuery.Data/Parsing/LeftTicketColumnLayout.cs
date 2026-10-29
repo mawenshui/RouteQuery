@@ -5,15 +5,24 @@ namespace RouteQuery.Data.Parsing;
 /// <summary>
 /// <c>API-02</c>（直达余票）结果的列布局。<b>全库唯一允许出现列下标的地方</b>（SPEC-004 一、硬约束 1）。
 /// <para>列名与语义取自官方渲染脚本 <c>queryLeftTicket_end_js.js</c> 中把竖线串逐位赋值给具名字段的代码，
-/// 并与官方页面 DOM 在同一瞬间逐格比对验证过；核实日期 2026-10-09。详见 SPEC-007 第二节。</para>
+/// 并与官方页面 DOM 在同一瞬间逐格比对验证过；核实日期 2026-10-09，v4 变动核实日期 2026-10-28。
+/// 详见 SPEC-007 第二节。</para>
 /// </summary>
 public static class LeftTicketColumnLayout
 {
     /// <summary>布局版本。官方字段变动时递增，并同步外置配置与样本。</summary>
-    public const int LayoutVersion = 3;
+    public const int LayoutVersion = 4;
 
-    /// <summary>期望列数。跨 C/D/G/K/T/Z 六种车型、246 条记录实测恒为 58。</summary>
-    public const int ExpectedColumnCount = 58;
+    /// <summary>
+    /// 期望列数。v3 时代（≤2026-10-20 实测）跨 C/D/G/K/T/Z 六种车型、246 条记录恒为 58；
+    /// <b>2026-10-28 实测变成 59</b>——新列插在下标 57，原第 57 列（恒空）被推到 58。
+    /// <para>本应用读取的最深下标是 <see cref="SaleTime"/>（55），所以<b>没有任何已用字段发生位移</b>。
+    /// 但列数仍然要改准：这条断言的意义就是"官方一改结构，我们立刻停止出数并说清楚"，
+    /// 而不是"反正没影响就放宽"。放宽一次，下一次真位移时就没有刹车了（AGENTS 六.2、七.6）。</para>
+    /// <para>列位对齐证据与两份样本的逐位对照见
+    /// <c>测试/接口样本/leftTicket-跨车型样本-v4-59列-20261028.json</c> 的 <c>_元信息</c>。</para>
+    /// </summary>
+    public const int ExpectedColumnCount = 59;
 
     // ── 标识与时刻 ───────────────────────────────────────────
     public static readonly ColumnSpec SecretStr = new(0);
@@ -97,6 +106,18 @@ public static class LeftTicketColumnLayout
 
     /// <summary><c>yp_ex</c>：曾经被误判为余票列。语义仍未确认，只透传，禁止接入任何判断。</summary>
     public static readonly ColumnSpec YpEx = new(34, Provenance: ColumnProvenance.Unverified);
+
+    /// <summary>
+    /// v4 新增列（2026-10-28 实测）。取值形如 <c>0##0#2</c> / <c>Q0210##1#1</c>，
+    /// 其中 <c>Q0210</c>、<c>Q0304</c> 这类片段也出现在下标 46 的复合串里，疑似与席位/静音车厢配置有关。
+    /// <para><b>没有任何官方脚本或页面列头证据，所以本列不接入任何判断，也不显示给用户</b>——
+    /// 登记它只为两件事：① 让"59 列里有两列我们不知道是什么"这件事在代码里是显式的，
+    /// 而不是靠注释里一句"末尾多了一列"；② 将来官方给出证据时，下标已经占好位。</para>
+    /// </summary>
+    public static readonly ColumnSpec Unknown57 = new(57, Provenance: ColumnProvenance.Unverified);
+
+    /// <summary>v3 时代的最后一列（恒空），v4 里被 <see cref="Unknown57"/> 挤到下标 58。同样不读取。</summary>
+    public static readonly ColumnSpec Unknown58 = new(58, Provenance: ColumnProvenance.Unverified);
 
     /// <summary>参与结构自检的三列：车次号、发车时刻、到达时刻。任一不合格式即判解析失败。</summary>
     public static ColumnSpec[] SelfCheckColumns => [TrainCode, Departure, Arrival];
